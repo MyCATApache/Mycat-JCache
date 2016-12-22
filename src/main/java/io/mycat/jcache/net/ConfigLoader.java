@@ -3,6 +3,7 @@ package io.mycat.jcache.net;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,7 +28,7 @@ public class ConfigLoader {
 	private ConfigLoader(){}
 	
 	public static void loadProperties(String path) throws IOException{
-		if(path==null&&path==""){
+		if(path==null&&"".equals(path)){
 			 path = filepath;
 		}
 
@@ -35,7 +36,7 @@ public class ConfigLoader {
 			logger.info("Loading properties file from " + path);
 		}
 		
-		String root = Thread.currentThread().getContextClassLoader().getResource("").getPath();
+		String root = getPath(); //TODO
 		System.out.println(root);
 		try (InputStream is = new FileInputStream(root+ "/" + path);){
 				properties.load(is);
@@ -47,6 +48,19 @@ public class ConfigLoader {
 			}
 		}
 	}
+	
+    private static String getPath(){  
+        String filePath = System.getProperty("java.class.path");  
+        String pathSplit = System.getProperty("path.separator");
+         
+        if(filePath.contains(pathSplit)){  
+            filePath = filePath.substring(0,filePath.indexOf(pathSplit));  
+        }else if (filePath.endsWith(".jar")) {//截取路径中的jar包名,可执行jar包运行的结果里包含".jar"   
+            filePath = filePath.substring(0, filePath.lastIndexOf(File.separator) + 1);  
+              
+        }
+        return filePath;  
+    }  
 	
 	public static String getProperty(String property){
 		return properties.getProperty(property);

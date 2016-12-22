@@ -30,7 +30,7 @@ public class JcacheMain
     	/**
     	 * 后期可能变更为从环境变量获取
     	 */
-    	ConfigLoader.loadProperties("");
+    	ConfigLoader.loadProperties(null);
     	
     	initGlobalConfig();
     	/** 初始化 内存模块 配置   */

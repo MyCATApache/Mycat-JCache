@@ -24,7 +24,7 @@
                 <include>LICENSE*</include>  
                 <include>NOTICE*</include>  
             </includes>  
-        </fileSet>  
+        </fileSet>
           
         <!-- 把项目的配置文件，打包进zip文件的config目录 -->  
         <fileSet>  
@@ -34,16 +34,26 @@
                 <include>*.xml</include>  
                 <include>*.properties</include>  
             </includes>  
-        </fileSet>  
+        </fileSet>
+        
+        <!-- 把项目的配置文件，打包进zip文件的lib目录 -->  
+        <fileSet>  
+            <directory>${project.basedir}\src\main\resources</directory>  
+            <outputDirectory>lib</outputDirectory>  
+            <includes>  
+                <include>*.xml</include>  
+                <include>*.properties</include>  
+            </includes>  
+        </fileSet>
           
         <!-- 把项目的脚本文件目录（ src/main/scripts ）中的启动脚本文件，打包进zip文件的跟目录 -->  
         <fileSet>  
-            <directory>${project.build.scriptSourceDirectory}</directory>  
-            <outputDirectory></outputDirectory>  
+            <directory>${project.basedir}\src\main\scripts</directory>  
+            <outputDirectory>bin</outputDirectory>  
             <includes>  
                 <include>startup.*</include>  
             </includes>  
-        </fileSet>  
+        </fileSet>
   
         <!-- 把项目的脚本文件（除了启动脚本文件），打包进zip文件的script目录 -->  
         <fileSet>  
@@ -58,6 +68,6 @@
             <includes>  
                 <include>*.jar</include>  
             </includes>  
-        </fileSet>  
+        </fileSet>
     </fileSets>  
 </assembly> 
