@@ -51,6 +51,14 @@
   </dependencies>
   <build>
 		<!-- finalName>${artifactId}-${version}-${buildNumber}</finalName -->
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+				<excludes>
+					<exclude>**/.svn/**</exclude>
+				</excludes>
+			</resource>
+		</resources>
 		<testResources>
 			<testResource>
 				<directory>src/test/resources</directory>
@@ -103,18 +111,19 @@
 	                    <!-- Manifest specific configuration -->  
 	                    <manifest>  
 	                        <!--    是否要把第三方jar放到manifest的classpath中  -->  
-	                        <addClasspath>true</addClasspath>  
-	                        <!--    生成的manifest中classpath的前缀，因为要把第三方jar放到lib目录下，所以classpath的前缀是lib/   -->  
-	                        <classpathPrefix>lib/</classpathPrefix> 
+	                        <addClasspath>false</addClasspath>  
+	                        <!--    生成的manifest中classpath的前缀，因为要把第三方jar放到lib目录下，所以classpath的前缀是lib/   -->
+	                        <classpathPrefix>lib/</classpathPrefix>   
 	                        <!--   应用的main class  -->  
 	                        <mainClass>io.mycat.jcache.net.JcacheMain</mainClass>  
 	                    </manifest>  
 	                </archive>  
 	                		<!--  过滤掉不希望包含在jar中的文件 -->  
 	                <excludes>  
-	                    <exclude>${project.basedir}/xml/*</exclude>  
+	                    <exclude>${project.basedir}/xml/*</exclude>
+	                    <exclude>${project.basedir}\src\main\resources</exclude>
 	                </excludes>  
-	            </configuration>  
+	            </configuration>
 	        </plugin>
 	        <!-- The configuration of maven-assembly-plugin -->  
 	        <plugin>  

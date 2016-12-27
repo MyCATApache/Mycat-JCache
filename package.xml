@@ -28,7 +28,7 @@
           
         <!-- 把项目的配置文件，打包进zip文件的config目录 -->  
         <fileSet>  
-            <directory>${project.basedir}\src\main\config</directory>  
+            <directory>${project.basedir}\src\main\resources</directory>  
             <outputDirectory>config</outputDirectory>  
             <includes>  
                 <include>*.xml</include>  
@@ -36,7 +36,7 @@
             </includes>  
         </fileSet>
         
-        <!-- 把项目的配置文件，打包进zip文件的lib目录 -->  
+        <!-- 把项目的配置文件，打包进zip文件的lib目录 
         <fileSet>  
             <directory>${project.basedir}\src\main\resources</directory>  
             <outputDirectory>lib</outputDirectory>  
@@ -45,26 +45,28 @@
                 <include>*.properties</include>  
             </includes>  
         </fileSet>
+        -->  
           
         <!-- 把项目的脚本文件目录（ src/main/scripts ）中的启动脚本文件，打包进zip文件的跟目录 -->  
         <fileSet>  
-            <directory>${project.basedir}\src\main\scripts</directory>  
+            <directory>${project.build.scriptSourceDirectory}</directory>  
             <outputDirectory>bin</outputDirectory>  
             <includes>  
                 <include>startup.*</include>  
             </includes>  
         </fileSet>
   
-        <!-- 把项目的脚本文件（除了启动脚本文件），打包进zip文件的script目录 -->  
+        <!-- 把项目的脚本文件（除了启动脚本文件），打包进zip文件的script目录 
         <fileSet>  
             <directory>${project.build.scriptSourceDirectory}</directory>  
             <outputDirectory></outputDirectory>
         </fileSet>  
+        --> 
           
         <!-- 把项目自己编译出来的jar文件，打包进zip文件的根目录 -->  
         <fileSet>  
             <directory>${project.build.directory}</directory>  
-            <outputDirectory></outputDirectory>  
+            <outputDirectory>lib</outputDirectory>  
             <includes>  
                 <include>*.jar</include>  
             </includes>  

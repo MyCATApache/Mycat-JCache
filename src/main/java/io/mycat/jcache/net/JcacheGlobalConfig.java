@@ -1,5 +1,8 @@
 package io.mycat.jcache.net;
 
+import java.io.File;
+import java.io.IOException;
+
 import io.mycat.jcache.enums.Protocol;
 
 /**

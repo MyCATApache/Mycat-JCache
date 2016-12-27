@@ -51,10 +51,8 @@ public class BinaryGetCommand implements Command{
 				logger.info("execute command get key {}",keystr);
 				long addr = JcacheContext.getItemsAccessManager().item_get(keystr, conn);
 				
-				System.out.println("  addr  "+addr);
 				byte[] value = ItemUtil.getValue(addr);
 				int flags = ItemUtil.ITEM_suffix_flags(addr);
-//				int flags = BinaryProtocol.MARKER_STRING;  //TODO 
 				byte[] extras = new byte[4];
 				extras[0] = (byte) (flags <<24  &0xff);
 				extras[1] = (byte) (flags <<16  &0xff);

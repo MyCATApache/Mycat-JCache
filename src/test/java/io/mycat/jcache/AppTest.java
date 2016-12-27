@@ -57,13 +57,13 @@ public class AppTest {
 	
 	@Test
 	public void testConfigLoader(){
-		try {
-			ConfigLoader.loadProperties(null);
-			System.out.println(ConfigLoader.getProperty("DB_SERVER"));
-			ConfigLoader.forEach();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+//		try {
+//			ConfigLoader.loadProperties(null);
+//			System.out.println(ConfigLoader.getProperty("DB_SERVER"));
+//			ConfigLoader.forEach();
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
 	}
 	
 	@Test

@@ -1,13 +1,14 @@
 package io.mycat.jcache.net;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.util.Properties;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 配置加载器
@@ -15,6 +16,8 @@ import java.util.Properties;
  *
  */
 public class ConfigLoader {
+	
+	private static final String SYS_HOME = "JCACHE_HOME";
 	
 	private static final Logger logger = LoggerFactory.getLogger(ConfigLoader.class);
 	
@@ -28,7 +31,7 @@ public class ConfigLoader {
 	private ConfigLoader(){}
 	
 	public static void loadProperties(String path) throws IOException{
-		if(path==null&&"".equals(path)){
+		if(path==null||"".equals(path)){
 			 path = filepath;
 		}
 
@@ -36,10 +39,12 @@ public class ConfigLoader {
 			logger.info("Loading properties file from " + path);
 		}
 		
-		String root = getPath(); //TODO
-		System.out.println(root);
-		try (InputStream is = new FileInputStream(root+ "/" + path);){
-				properties.load(is);
+		File home = new File(getJcacheHome());
+        File conf = new File(home, "config");
+        File prop = new File(conf, path);
+
+        try (InputStream ins = new FileInputStream(prop)){
+				properties.load(ins);
 		} catch (IOException e) {
 			if(logger.isErrorEnabled()){
 				logger.error("Could not load properties from "+path+":"+e.getMessage());
@@ -49,18 +54,9 @@ public class ConfigLoader {
 		}
 	}
 	
-    private static String getPath(){  
-        String filePath = System.getProperty("java.class.path");  
-        String pathSplit = System.getProperty("path.separator");
-         
-        if(filePath.contains(pathSplit)){  
-            filePath = filePath.substring(0,filePath.indexOf(pathSplit));  
-        }else if (filePath.endsWith(".jar")) {//截取路径中的jar包名,可执行jar包运行的结果里包含".jar"   
-            filePath = filePath.substring(0, filePath.lastIndexOf(File.separator) + 1);  
-              
-        }
-        return filePath;  
-    }  
+	private static String getJcacheHome(){
+		return System.getProperty(SYS_HOME);
+	}
 	
 	public static String getProperty(String property){
 		return properties.getProperty(property);
