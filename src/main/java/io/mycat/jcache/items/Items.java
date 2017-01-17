@@ -167,12 +167,12 @@ public class Items {
 		/*
 		 * 只实现了 set 命令的处理
 		 */
-		if(oldaddr!=0){
+		if(oldaddr!=-1){
 		}
 
 		int failed_alloc = 0;
 		if(Store_item_type.NOT_STORED.equals(stored)&&failed_alloc==0){
-			if(oldaddr!=0){
+			if(oldaddr!=-1){
 //				item_replace(oldaddr,addr,hv); //todo replace
 			}else{
 				do_item_link(addr,hv);
@@ -180,7 +180,7 @@ public class Items {
 			}
 		}
 
-		if(oldaddr!=0){
+		if(oldaddr!=-1){
 			do_item_remove(oldaddr);  /* release our reference */
 		}
 

@@ -125,10 +125,10 @@ public interface Command {
 		/* We don't actually receive the trailing two characters in the bin
 	     * protocol, so we're going to just set them here */
 		if((flags&ItemFlags.ITEM_CHUNKED.getFlags())==0){
-			long datastart = ItemUtil.ITEM_data(addr);
-			long nbytes = ItemUtil.getNbytes(addr);
-			UnSafeUtil.putByte(datastart+nbytes-2, (byte)13);
-			UnSafeUtil.putByte(datastart+nbytes-1, (byte)10);
+//			long datastart = ItemUtil.ITEM_data(addr);
+//			long nbytes = ItemUtil.getNbytes(addr);
+//			UnSafeUtil.putByte(datastart+nbytes-2, (byte)13);
+//			UnSafeUtil.putByte(datastart+nbytes-1, (byte)10);
 		}else{
 			//TODO 
 		}

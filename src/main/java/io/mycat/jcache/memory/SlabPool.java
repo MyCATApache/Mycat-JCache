@@ -1,6 +1,10 @@
 package io.mycat.jcache.memory;
 
-import java.nio.ByteBuffer;
+import java.io.RandomAccessFile;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.nio.channels.FileChannel;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.IntStream;
 
@@ -9,6 +13,8 @@ import org.slf4j.LoggerFactory;
 
 import io.mycat.jcache.setting.Settings;
 import io.mycat.jcache.util.UnSafeUtil;
+import sun.misc.Unsafe;
+import sun.nio.ch.FileChannelImpl;
 
 /*
  * 
@@ -17,26 +23,48 @@ import io.mycat.jcache.util.UnSafeUtil;
  * @author PigBrother
  *
  */
+@SuppressWarnings("restriction")
 public class SlabPool {
-	Logger log = LoggerFactory.getLogger(SlabPool.class);
+
+	private Logger log = LoggerFactory.getLogger(SlabPool.class);
 	
-	final SlabClass[] slabClassArr;
-	long memBase;      //当前 bytebuffer  内存首地址
-	long mem_current;  //当前bytebuffer 位置 偏移量   内存首地址
-	long mem_avail;    //当前可用内存
-	long memAlloced;   //已分配内存
-	long mem_limit;     //总内存大小
-	int powerLargest;  //最大 slabclass 数量
-	ByteBuffer[] baseBuf = null;  //预分配内存数组
-	int currByteIndex;  //当前用到了第几个bytebuffer;
+	private static final Method mmap;
+	private static final Method unmmap;
+	private FileChannel channel;
+	private RandomAccessFile randomFile;
+	
+	private final SlabClass[] slabClassArr;
+	private long mem_current;  //当前位置 偏移量 
+	private long mem_avail;    //当前可用内存
+	private long memAlloced;   //已分配内存
+	private long mem_limit;     //总内存大小
+	private int powerLargest;  //最大 slabclass 数量
+//	ByteBuffer[] baseBuf = null;  //预分配内存数组
+//	int currByteIndex;  //当前用到了第几个bytebuffer;
+	private long addr;
+	private long totalSize;
+
+	
+	static {
+		try {
+			Field singleoneInstanceField = Unsafe.class.getDeclaredField("theUnsafe");
+			singleoneInstanceField.setAccessible(true);
+			mmap = getMethod(FileChannelImpl.class, "map0", int.class, long.class, long.class);
+			mmap.setAccessible(true);
+			unmmap = getMethod(FileChannelImpl.class, "unmap0", long.class, long.class);
+			unmmap.setAccessible(true);
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
 	
 	final AtomicBoolean allocLockStatus = new AtomicBoolean(false);
 	
-	public SlabPool(){
+	public SlabPool(long memLimit,String fileName){
+		
+		totalSize = memLimit;
 		this.slabClassArr = new SlabClass[Settings.MAX_NUMBER_OF_SLAB_CLASSES];
-	}
-	
-	public void init(long memLimit){
+		
 		int size = Settings.chunkSize+Settings.ITEM_HEADER_LENGTH;
 		if(!Settings.prealloc){
 			log.info(" prealloc ? "+Settings.prealloc );
@@ -44,38 +72,16 @@ public class SlabPool {
 		}
 		
 		try{
-			
-			if(memLimit<=Integer.MAX_VALUE){
-				baseBuf = new ByteBuffer[1];
-				baseBuf[0] = ByteBuffer.allocateDirect((int) memLimit);
-			}else{
-				int bufcount = (int) Math.ceil((memLimit/Integer.MAX_VALUE));
-				int suffixbuff = (int)((memLimit-bufcount)%Integer.MAX_VALUE);
-				baseBuf = new ByteBuffer[bufcount];
-				for(int i=0;i<bufcount-1;i++){
-					baseBuf[i] = ByteBuffer.allocateDirect(Integer.MAX_VALUE);
-				}
-				
-				if(suffixbuff==0){
-					baseBuf[bufcount-1] = ByteBuffer.allocateDirect(Integer.MAX_VALUE);
-				}else{
-					if(suffixbuff<Settings.slabPageSize){  //最后一个大小不足  slabPageSize 时， 不计算
-						suffixbuff = 0;
-					}
-					
-					if(bufcount>1&&suffixbuff>0){
-						baseBuf[bufcount-1] = ByteBuffer.allocateDirect(suffixbuff);
-					}
-				}
-			}
+			randomFile = new RandomAccessFile(fileName, "rw");
+			randomFile.setLength(totalSize);
+			channel = randomFile.getChannel();
+			addr = (long) mmap.invoke(channel, 1, 0, totalSize);
 			mem_avail = memLimit;
 			mem_limit = memLimit;
-			memBase = ((sun.nio.ch.DirectBuffer) baseBuf[0]).address();
-			mem_current = memBase;
-			
+			mem_current = addr;
 
 		}catch(Exception e){
-			log.error(" Init allocate direct buffer fail.Will allocate in smaller chunks. For "+e.getMessage(), e);
+			log.error(" Init allocate direct buffer fail. For "+e.getMessage(), e);
 			return;
 		}
 		
@@ -99,6 +105,28 @@ public class SlabPool {
 		
 		/* 预分配slab 在 slabclasss 中 */
 		slabsPreallocate(powerLargest);
+		
+		Runtime.getRuntime().addShutdownHook(new Thread(){
+			@Override
+			public void run() {
+				try {
+					unmmap.invoke(null, addr, getTotalSize());
+				} catch (Exception e) {
+					e.printStackTrace();
+				} 
+			}
+		});
+	}
+	
+	private static Method getMethod(Class<?> cls, String name, Class<?>... params) throws Exception {
+		Method m = cls.getDeclaredMethod(name, params);
+		m.setAccessible(true);
+		return m;
+	}
+	
+	protected void unmap() throws Exception {
+		unmmap.invoke(null, addr, getTotalSize());
+	
 	}
 	
 	/**
@@ -176,30 +204,20 @@ public class SlabPool {
 	}
 	
 	public long memoryAllocate(int size){
-
-//		if(baseBuf == null){
-//			ByteBuffer buf = ByteBuffer.allocateDirect(size);
-//			slab = new Slab(buf,Settings.slabPageSize, size/Settings.slabPageSize);
-//		}else{
+		long ret;
 		if(size > (mem_limit-memAlloced)){
 			return 0;
 		}
+		
+		ret = mem_current;
 		
 		if(size % Settings.CHUNK_ALIGN_BYTES != 0){
 			size += Settings.CHUNK_ALIGN_BYTES - (size % Settings.CHUNK_ALIGN_BYTES);
 		}
 		
+		mem_current += size;  //当前内存地址 后移 size 位
 		if((mem_avail - size )>0){ //说明还有空间
-			if((mem_current+size) <= (memBase+Integer.MAX_VALUE)){ //当前bytebuffer 有空间
-				//当期bytebuffer 还有空间
-				mem_current += size;  //当前内存地址 后移 size 位
-				mem_avail -= size;    //可用内存 减少          size
-			}else{
-				mem_avail -= ((memBase+Integer.MAX_VALUE) - mem_current);  //当前bytebuffer 最后几位被浪费掉了。
-				memBase = ((sun.nio.ch.DirectBuffer) baseBuf[++currByteIndex]).address();
-				mem_current = memBase;
-			}
-			return mem_current;
+			mem_avail -= size;    //可用内存 减少          size
 		}else{
 			mem_avail = 0;
 		}
@@ -208,7 +226,7 @@ public class SlabPool {
 		if(log.isInfoEnabled()){
 			log.info("memory allocated "+size+" B");
 		}
-		return mem_current;
+		return ret;
 	}
 	
 	
@@ -266,6 +284,10 @@ public class SlabPool {
 	public void slabs_free(long addr,int ntotal,int slabsClassid){
 		SlabClass slabc = slabClassArr[slabsClassid];
 		slabc.doSlabsFree(addr,ntotal,slabsClassid);
+	}
+
+	public long getTotalSize() {
+		return totalSize;
 	}
 	
 }

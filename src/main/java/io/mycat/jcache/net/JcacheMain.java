@@ -12,6 +12,7 @@ import io.mycat.jcache.memory.SlabPool;
 import io.mycat.jcache.net.strategy.ReactorSelectEnum;
 import io.mycat.jcache.net.strategy.ReactorStrategy;
 import io.mycat.jcache.net.strategy.RoundRobinStrategy;
+import io.mycat.jcache.setting.Settings;
 import sun.misc.VM;
 
 
@@ -38,13 +39,18 @@ public class JcacheMain
     	initGlobalConfig();
     	/** 初始化 内存模块 配置   */
     	initMemoryConfig();
+    	
+    	initHashTable();
 
+    	startJcacheServer();
+    }
+    
+    private static void startJcacheServer() throws IOException {
     	int port = ConfigLoader.getIntProperty("port",JcacheGlobalConfig.defaultPort);
     	int poolsize = ConfigLoader.getIntProperty("reactor.pool.size",JcacheGlobalConfig.defaulePoolSize);
     	String bindIp = ConfigLoader.getStringProperty("reactor.pool.bindIp", JcacheGlobalConfig.defaultPoolBindIp);
     	String reaStrategy = ConfigLoader.getStringProperty("reactor.pool.selectStrategy", JcacheGlobalConfig.defaultReactorSelectStrategy);
     	int backlog = ConfigLoader.getIntProperty("acceptor.max_connect_num", JcacheGlobalConfig.defaultMaxAcceptNum);
-    	
     	NIOReactorPool reactorPool = new NIOReactorPool(poolsize,reactorStrategy.get(ReactorSelectEnum.valueOf(reaStrategy)));
     	
     	TCPNIOAcceptor acceptor=new TCPNIOAcceptor(bindIp,port, reactorPool,backlog);
@@ -52,6 +58,13 @@ public class JcacheMain
     }
     
     /**
+     * 初始化hashtable  TODO 待hashtable 完善后,完成此部分初始化,目前hashtable 设定为固定值
+     */
+    private static void initHashTable() {
+    	String jdkBit = System.getProperty("sun.arch.data.model");  //获取jdk 位数
+	}
+
+	/**
      * 初始化reactorStrategy
      */
     private static void initReactorStrategy(){
@@ -68,6 +81,8 @@ public class JcacheMain
     		protStr = "negotiating";
     	}
     	JcacheGlobalConfig.prot = Protocol.valueOf(protStr);
+    	String defaultMapfile = ConfigLoader.class.getClassLoader().getResource("").getPath()+"mapfile";
+    	Settings.mapfile = ConfigLoader.getStringProperty("memory.mapfile", defaultMapfile);
     }
     
     /**
@@ -76,9 +91,11 @@ public class JcacheMain
      */
     @SuppressWarnings("restriction")
     public static void initMemoryConfig(){
-    	SlabPool slabPool = new SlabPool();
+    	
 		long limit = VM.maxDirectMemory();
-    	slabPool.init(limit-Integer.MAX_VALUE-1024*1024);  //TODO bug hashtable 占用内存过大，需要优化。
+		long hashsize = (long) (limit*0.2); //TODO hashtable 暂定大小为堆外内存20% 需要优化
+		Settings.hashsize = hashsize > (Integer.MAX_VALUE-1)?(Integer.MAX_VALUE-1):(int)hashsize;
+		SlabPool slabPool = new SlabPool(limit-Settings.hashsize,Settings.mapfile);
     	JcacheContext.setSlabPool(slabPool);
     	JcacheContext.setItemsAccessManager(new ItemsAccessManager());
     }
