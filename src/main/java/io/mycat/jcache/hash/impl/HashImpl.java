@@ -12,6 +12,7 @@ import io.mycat.jcache.setting.Settings;
 import io.mycat.jcache.hash.Hash;
 import io.mycat.jcache.hash.Hash_init;
 import io.mycat.jcache.hash.Hash_func_type;
+import io.mycat.jcache.hash.impl.algorithm.Jenkins_hash;
 import io.mycat.jcache.hash.impl.algorithm.Pig_SDBM_hash;
 
 /**
@@ -39,7 +40,7 @@ public class HashImpl implements Hash_init {
         switch (type){
             case JENKINS_HASH:
                 Settings.hash_algorithm="jenkins";
-                //hash = new Jenkins_hash_impl();
+                hash = new Jenkins_hash();
                 break;
             case MURMUR3_HASH:
                 Settings.hash_algorithm="murmur3";
