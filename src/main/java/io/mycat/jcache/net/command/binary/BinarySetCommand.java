@@ -59,10 +59,14 @@ public class BinarySetCommand implements Command{
 				return;
 			}
 			// prev,next,hnext,flushTime,expTime,nbytes,refCount,slabsClisd,it_flags,nsuffix,nskey
-//			ItemUtil.set
-//			ItemUtil.setKey(keystr.getBytes(JcacheGlobalConfig.defaultCahrset), addr);
+			byte[] keybyte = keystr.getBytes(JcacheGlobalConfig.defaultCahrset);
 			byte[] valuebyte = new byte[value.limit()];
 			value.get(valuebyte);
+			System.out.println(new String(valuebyte));
+			ItemUtil.setNskey(addr, (byte)keybyte.length);
+			ItemUtil.setNbytes(addr, valuebyte.length);
+			ItemUtil.setKey(keybyte, addr);
+			
 			ItemUtil.setValue(addr, valuebyte);
 			
 			ItemUtil.ITEM_set_cas(addr, readCAS(conn));

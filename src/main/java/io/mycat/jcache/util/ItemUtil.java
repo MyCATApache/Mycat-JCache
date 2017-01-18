@@ -286,9 +286,7 @@ public class ItemUtil {
 	 */
 	public static String getKey(long addr){
 		byte[] bs = new byte[getNskey(addr)&0xff];
-		for (int i = 0; i < bs.length; i++) {
-			bs[i]=UnSafeUtil.getByteVolatile(addr+KEY+i);
-		}
+		UnSafeUtil.getBytes(ITEM_key(addr), bs, 0, bs.length);
 		return new String(bs);
 	}
 	//PigBrother

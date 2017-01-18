@@ -39,9 +39,7 @@ public class ConfigLoader {
 			logger.info("Loading properties file from " + path);
 		}
 		
-		File home = new File(getJcacheHome());
-        File conf = new File(home, "config");
-        File prop = new File(conf, path);
+		File prop = getProperties(path);
 
         try (InputStream ins = new FileInputStream(prop)){
 				properties.load(ins);
@@ -51,6 +49,22 @@ public class ConfigLoader {
 			}else{
 				throw e;
 			}
+		}
+	}
+	
+	
+	
+	private static File getProperties(String path){
+		String jcachehome = getJcacheHome();
+		System.out.println();
+		if(jcachehome!=null){
+			File home = new File(jcachehome);
+	        File conf = new File(home, "config");
+	        File prop = new File(conf, path);
+	        return prop;
+		}else{
+			String floder = ConfigLoader.class.getClassLoader().getResource("").getPath();
+			return new File(floder+path);
 		}
 	}
 	

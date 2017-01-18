@@ -83,4 +83,8 @@ public class Settings {
 	 */
 	public static int ITEM_UPDATE_INTERVAL= 60;
 	
+	public static int hashsize;  //临时参数
+	
+	public static String mapfile; // MappedByteBuffer 内存映射文件地址
+	
 }
