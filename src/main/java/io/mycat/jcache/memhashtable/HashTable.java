@@ -25,7 +25,7 @@ import java.nio.ByteBuffer;
  */
 public class HashTable {
     private static ByteBuffer cached = ByteBuffer.allocateDirect(Settings.hashsize);
-    static Hash hash = new HashImpl(Hash_func_type.PIG_HASH);
+    static Hash hash = new HashImpl(Hash_func_type.JENKINS_HASH);
 /*    static {
         for (int i = 0; i < 0xfffffff; i++) {
             cached.putLong(-1);
