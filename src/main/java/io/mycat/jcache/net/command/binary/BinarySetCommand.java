@@ -43,7 +43,6 @@ public class BinarySetCommand implements Command{
 	
 		try {
 			long addr = JcacheContext.getItemsAccessManager().item_alloc(keystr, flags, exptime, readValueLength(conn)+2);
-			System.out.println("  addr  "+addr);
 			if(addr==0){
 				if(!JcacheContext.getItemsAccessManager().item_size_ok(readKeyLength(conn), flags, readValueLength(conn)+2)){
 					writeResponse(conn,BinaryProtocol.OPCODE_SET,ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_E2BIG.getStatus(),0l);
@@ -62,11 +61,9 @@ public class BinarySetCommand implements Command{
 			byte[] keybyte = keystr.getBytes(JcacheGlobalConfig.defaultCahrset);
 			byte[] valuebyte = new byte[value.limit()];
 			value.get(valuebyte);
-			System.out.println(new String(valuebyte));
 			ItemUtil.setNskey(addr, (byte)keybyte.length);
 			ItemUtil.setNbytes(addr, valuebyte.length);
 			ItemUtil.setKey(keybyte, addr);
-			
 			ItemUtil.setValue(addr, valuebyte);
 			
 			ItemUtil.ITEM_set_cas(addr, readCAS(conn));

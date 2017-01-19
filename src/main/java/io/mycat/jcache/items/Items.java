@@ -81,38 +81,39 @@ public class Items {
 			}else{
 				break;
 			}
-			ItemUtil.setNext(itemaddr, 0);
-			ItemUtil.setPrev(itemaddr, 0);
+		}
+		
+		ItemUtil.setNext(itemaddr, 0);
+		ItemUtil.setPrev(itemaddr, 0);
 
-			if(Settings.lruMaintainerThread){
-				if(exptime==0&& Settings.expireZeroDoesNotEvict){
-					clsid = clsid|LRU_TYPE_MAP.NOEXP_LRU.ordinal();
-				}else{
-					clsid = clsid|LRU_TYPE_MAP.HOT_LRU.ordinal();
-				}
+		if(Settings.lruMaintainerThread){
+			if(exptime==0&& Settings.expireZeroDoesNotEvict){
+				clsid = clsid|LRU_TYPE_MAP.NOEXP_LRU.ordinal();
 			}else{
-				clsid = clsid|LRU_TYPE_MAP.COLD_LRU.ordinal();
+				clsid = clsid|LRU_TYPE_MAP.HOT_LRU.ordinal();
 			}
+		}else{
+			clsid = clsid|LRU_TYPE_MAP.COLD_LRU.ordinal();
+		}
 
-			ItemUtil.setSlabsClsid(itemaddr, (byte)clsid);
-			byte flag = ItemUtil.getItflags(itemaddr);
-			ItemUtil.setItflags(itemaddr, (byte)(flag|(Settings.useCas?ItemFlags.ITEM_CAS.getFlags():0)));
-			ItemUtil.setNskey(itemaddr,(byte)key.length());
-			ItemUtil.setNbytes(itemaddr, nbytes);
-			try {
-				ItemUtil.setKey(key.getBytes(JcacheGlobalConfig.defaultCahrset), itemaddr);
-				ItemUtil.setExpTime(itemaddr, exptime);
-				byte[] suffixBytes = suffixStr.getBytes(JcacheGlobalConfig.defaultCahrset);
-				ItemUtil.setSuffix(itemaddr, suffixBytes);
-				ItemUtil.setNsuffix(itemaddr, (byte)suffixBytes.length);
-				if((flag&ItemFlags.ITEM_CHUNKED.getFlags())>0){
-					//TODO
+		ItemUtil.setSlabsClsid(itemaddr, (byte)clsid);
+		byte flag = ItemUtil.getItflags(itemaddr);
+		ItemUtil.setItflags(itemaddr, (byte)(flag|(Settings.useCas?ItemFlags.ITEM_CAS.getFlags():0)));
+		ItemUtil.setNskey(itemaddr,(byte)key.length());
+		ItemUtil.setNbytes(itemaddr, nbytes);
+		try {
+			ItemUtil.setKey(key.getBytes(JcacheGlobalConfig.defaultCahrset), itemaddr);
+			ItemUtil.setExpTime(itemaddr, exptime);
+			byte[] suffixBytes = suffixStr.getBytes(JcacheGlobalConfig.defaultCahrset);
+			ItemUtil.setSuffix(itemaddr, suffixBytes);
+			ItemUtil.setNsuffix(itemaddr, (byte)suffixBytes.length);
+			if((flag&ItemFlags.ITEM_CHUNKED.getFlags())>0){
+				//TODO
 //					long item_chunk = ItemUtil.ITEM_data(itemaddr);
-				}
-				ItemUtil.setHNext(itemaddr, 0);
-			} catch (UnsupportedEncodingException e) {
-				e.printStackTrace();
 			}
+			ItemUtil.setHNext(itemaddr, 0);
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
 		}
 		return itemaddr;
 	}
