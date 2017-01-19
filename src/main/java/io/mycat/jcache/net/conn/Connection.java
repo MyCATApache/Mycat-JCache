@@ -262,7 +262,7 @@ public class Connection implements Closeable,Runnable{
         try {
             SelectionKey key = this.selectionKey;
             key.interestOps(key.interestOps() & ~SelectionKey.OP_WRITE);
-            logger.warn("disable write con " + this);
+//            logger.warn("disable write con " + this);
         } catch (Exception e) {
             logger.warn("can't disable write " + e + " con " + this);
         }
@@ -272,7 +272,7 @@ public class Connection implements Closeable,Runnable{
         try {
             SelectionKey key = this.selectionKey;
             key.interestOps(key.interestOps() & ~SelectionKey.OP_READ);
-            logger.warn("disable write con " + this);
+//            logger.warn("disable write con " + this);
         } catch (Exception e) {
             logger.warn("can't disable write " + e + " con " + this);
         }
