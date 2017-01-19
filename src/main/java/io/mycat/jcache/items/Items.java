@@ -159,7 +159,7 @@ public class Items {
 	 *
 	 * Returns the state of storage.
 	 */
-	public static Store_item_type do_item_store(long addr, Connection conn, long hv){
+	public static Store_item_type do_store_item(long addr, Connection conn, long hv){
 		Store_item_type stored = Store_item_type.NOT_STORED;
 		String key = ItemUtil.getKey(addr);
 		long oldaddr = do_item_get(key,conn);
