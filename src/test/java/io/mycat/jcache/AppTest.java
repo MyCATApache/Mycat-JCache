@@ -68,9 +68,22 @@ public class AppTest {
 	
 	@Test
 	public void testsetCommand(){
-        boolean result = mcc.set("foo", "This is a test String");
-        System.out.println(result);
-        Object bar = mcc.get("foo");
+		Random ran = new Random();
+		for(int i=0;i<100000;i++){
+			boolean result = mcc.set("foo"+i, "This is a test String"+i);
+			
+	        System.out.println(result+":"+i);
+	        Object bar = mcc.get("foo"+i);
+	        System.out.println(">>> " + bar);
+	        try {
+				Thread.sleep(ran.nextInt(200));
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+//        boolean result = mcc.set("foo99999", "This is a test String1111");
+//        System.out.println(result);
+        Object bar = mcc.get("foo99999");
         System.out.println(">>> " + bar);
 	}
 	
