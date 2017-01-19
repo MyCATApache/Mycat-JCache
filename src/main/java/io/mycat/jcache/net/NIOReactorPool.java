@@ -22,7 +22,7 @@ public class NIOReactorPool {
 	/**
 	 * 多个 reactor 共用一个线程池
 	 */
-	private final ExecutorService executor=Executors.newCachedThreadPool();
+	private final ExecutorService executor=Executors.newWorkStealingPool();
 	
 	private volatile int lastreactor; // 上一次处理连接的reactor，使用volatile保证多线程操作时内存可见
 	
