@@ -38,7 +38,7 @@ public class ItemsAccessManager {
 		String key = ItemUtil.getKey(addr);
 		byte length = ItemUtil.getNskey(addr);
 		long hv = HashTable.hash(key, length);
-		return Items.do_item_store(addr,conn,hv);
+		return Items.do_store_item(addr,conn,hv);
 	}
 	
 	public boolean item_size_ok(int nkey,int flags,int nbytes){
