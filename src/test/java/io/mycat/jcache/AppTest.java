@@ -69,7 +69,7 @@ public class AppTest {
 	@Test
 	public void testsetCommand(){
 		Random ran = new Random();
-		for(int i=0;i<100000;i++){
+		for(int i=0;i<1;i++){
 			boolean result = mcc.set("foo"+i, "This is a test String"+i);
 			
 	        System.out.println(result+":"+i);
@@ -83,7 +83,7 @@ public class AppTest {
 		}
 //        boolean result = mcc.set("foo99999", "This is a test String1111");
 //        System.out.println(result);
-        Object bar = mcc.get("foo99999");
+		Object bar = mcc.get("foo99999");
         System.out.println(">>> " + bar);
 	}
 	
