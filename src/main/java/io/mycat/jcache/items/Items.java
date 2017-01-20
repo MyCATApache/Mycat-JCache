@@ -164,7 +164,6 @@ public class Items {
 		String key = ItemUtil.getKey(addr);
 		long oldaddr = do_item_get(key,conn);
 
-
 		/*
 		 * 只实现了 set 命令的处理
 		 */
@@ -174,7 +173,7 @@ public class Items {
 		int failed_alloc = 0;
 		if(Store_item_type.NOT_STORED.equals(stored)&&failed_alloc==0){
 			if(oldaddr!=-1){
-//				item_replace(oldaddr,addr,hv); //todo replace
+				item_replace(oldaddr,addr,hv); //todo replace 
 			}else{
 				do_item_link(addr,hv);
 				stored = Store_item_type.STORED;
@@ -190,6 +189,10 @@ public class Items {
 		}
 
 		return stored;
+	}
+	
+	public static boolean item_replace(long oldaddr,long addr,long hv){
+		return do_item_replace( oldaddr, addr, hv);
 	}
 
 	public static boolean do_item_link(long addr,long hv){
@@ -217,7 +220,13 @@ public class Items {
 	}
 
 	private static  void do_item_unlink_q(long addr){
-
+		int clsid = ItemUtil.getSlabsClsid(addr);
+		while(allocItemStatus[clsid].compareAndSet(false, true)){}
+		try {
+			do_item_unlink_q(addr);
+		} finally {
+			allocItemStatus[clsid].set(false);
+		}
 	}
 
 	/**
@@ -384,14 +393,14 @@ public class Items {
 		}
 	}
 
-	private void item_unlink_q(long addr) {
+	private static void item_unlink_q(long addr) {
 	}
 
-	private static void do_item_unlink(long addr,int hv){
-
+	private static void do_item_unlink(long addr,long hv){
+		byte flags = ItemUtil.getItflags(addr);
 	}
 
-	public static boolean do_item_replace(long oldAddr,long newAddr,int hv){
+	public static boolean do_item_replace(long oldAddr,long newAddr,long hv){
 		do_item_unlink(oldAddr,hv);
 		return  do_item_link(newAddr, hv);
 	}
