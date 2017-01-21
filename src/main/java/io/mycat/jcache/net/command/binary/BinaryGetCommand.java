@@ -49,8 +49,8 @@ public class BinaryGetCommand implements Command{
 				ByteBuffer key = readkey(conn);
 				String keystr = new String(cs.decode(key).array());
 				logger.info("execute command get key {}",keystr);
-				long addr = JcacheContext.getItemsAccessManager().item_get(keystr, conn);
-				if(addr==-1){
+				long addr = JcacheContext.getItemsAccessManager().item_get(keystr,keylen, conn);
+				if(addr==0){
 					writeResponse(conn, BinaryProtocol.OPCODE_GET, ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_KEY_ENOENT.getStatus(), 0L);
 				}else{
 					byte[] value = ItemUtil.getValue(addr);

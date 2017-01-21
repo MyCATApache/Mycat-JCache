@@ -57,7 +57,7 @@ public class BinaryTouchCommand implements Command{
 				ByteBuffer key = readkey(conn);
 				String keystr = new String(cs.decode(key).array());
 				logger.info("execute command get key {}",keystr);
-				long addr = JcacheContext.getItemsAccessManager().item_get(keystr, conn);
+				long addr = JcacheContext.getItemsAccessManager().item_get(keystr, keylen,conn);
 				System.out.println("  addr  "+addr);
 //				byte[] value = ItemUtil.getValue(addr);
 				ItemUtil.setExpTime(addr,System.currentTimeMillis()/1000);

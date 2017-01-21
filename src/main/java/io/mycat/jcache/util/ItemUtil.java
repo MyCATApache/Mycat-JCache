@@ -17,6 +17,14 @@ import io.mycat.jcache.setting.Settings;
  * 其中 "flag"  为 flag 的字符形式， "nbytes"  是 nbytes 的字符形式
  */
 public class ItemUtil {
+	
+	public static String ItemToString(long addr){
+		return "{prev =" + getPrev(addr)+",next = "+getNext(addr)+",hnext = "+getHNext(addr)+", flushtime = "
+			   + getTime(addr)+", exptime = "+getExpTime(addr)+", nbytes = "+getNbytes(addr)+", refcount = "
+			   + getRefCount(addr)+", slabsclsid = " + getSlabsClsid(addr)+", itlags = "
+			   + getItflags(addr)+",nsuffix = " + getNsuffix(addr)+",nskey = " + getNskey(addr)+", key = "
+			   + getKey(addr)+",suffix = " + new String(getSuffix(addr))+",value = " + new String(getValue(addr)) +"}";
+	}
 
 	/**
 	 * PigBrother
@@ -319,7 +327,7 @@ public class ItemUtil {
 	public static byte[] getSuffix(long addr){
 		int length = getNsuffix(addr);
 		byte[] data = new byte[length];
-		UnSafeUtil.getBytes(addr, data, (int)ITEM_suffix(addr),length);
+		UnSafeUtil.getBytes(ITEM_suffix(addr), data, 0,length);
 		return data;
 	}
 	

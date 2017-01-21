@@ -1,8 +1,9 @@
 package io.mycat.jcache.items;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import io.mycat.jcache.context.JcacheContext;
 import io.mycat.jcache.enums.Store_item_type;
-import io.mycat.jcache.memhashtable.HashTable;
 import io.mycat.jcache.net.conn.Connection;
 import io.mycat.jcache.setting.Settings;
 import io.mycat.jcache.util.ItemUtil;
@@ -14,12 +15,24 @@ import io.mycat.jcache.util.ItemUtil;
  *
  */
 public class ItemsAccessManager {
+	
+	private final AtomicBoolean item_lock = new AtomicBoolean(false);
 	/*
 	 * Returns an item if it hasn't been marked as expired,
 	 * lazy-expiring as needed.
 	 */
-	public long item_get(String key,Connection conn){
-		return Items.do_item_get(key,conn);
+	public long item_get(String key,int nkey,Connection conn){
+		
+		long it;
+		long hv = JcacheContext.getHash().hash(key, nkey);
+		
+		while(item_lock.compareAndSet(false, true)){}
+		try{
+			it = Items.do_item_get(key,nkey,hv,conn);
+		}finally{
+			item_lock.lazySet(false);
+		}
+		return it;
 	}
 	
 	/**
@@ -37,7 +50,7 @@ public class ItemsAccessManager {
 	public Store_item_type store_item(long addr,Connection conn){
 		String key = ItemUtil.getKey(addr);
 		byte length = ItemUtil.getNskey(addr);
-		long hv = HashTable.hash(key, length);
+		long hv = JcacheContext.getHash().hash(key, length);
 		return Items.do_store_item(addr,conn,hv);
 	}
 	

@@ -35,7 +35,7 @@ public class BinarySetCommand implements Command{
 		if(value.remaining()> JcacheGlobalConfig.VALUE_MAX_LENGTH){
 			writeResponse(conn,BinaryProtocol.OPCODE_SET,ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_E2BIG.getStatus(),1l);
 		}
-				
+		int keylen = conn.getBinaryRequestHeader().getKeylen();
 		ByteBuffer extras = readExtras(conn);
 		
 		int flags = extras.getInt();
@@ -49,7 +49,7 @@ public class BinarySetCommand implements Command{
 				}else{
 					writeResponse(conn,BinaryProtocol.OPCODE_SET,ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_ENOMEM.getStatus(),0l);
 				}
-				addr = JcacheContext.getItemsAccessManager().item_get(keystr, conn);
+				addr = JcacheContext.getItemsAccessManager().item_get(keystr,keylen, conn);
 				
 				if(addr>0){
 					JcacheContext.getItemsAccessManager().item_unlink(addr);
@@ -67,11 +67,11 @@ public class BinarySetCommand implements Command{
 			ItemUtil.setValue(addr, valuebyte);
 			
 			ItemUtil.ITEM_set_cas(addr, readCAS(conn));
-			
 			complete_update_bin(addr,conn);
-			
-			if(logger.isInfoEnabled()){
-				logger.info("execute command set key {} , value {} ",new String(cs.decode (key).array()),new String(cs.decode (value).array()));
+						
+			if(logger.isDebugEnabled()){
+				logger.debug(" item data = " +ItemUtil.ItemToString(addr));
+				logger.debug("execute command set key {} , value {} ",new String(cs.decode (key).array()),new String(cs.decode (value).array()));
 			}
 			
 			writeResponse(conn,BinaryProtocol.OPCODE_SET,ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_SUCCESS.getStatus(),1l);

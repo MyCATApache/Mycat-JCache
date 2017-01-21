@@ -1,5 +1,7 @@
 package io.mycat.jcache.context;
 
+import io.mycat.jcache.hash.Assoc;
+import io.mycat.jcache.hash.Hash;
 import io.mycat.jcache.items.ItemsAccessManager;
 import io.mycat.jcache.memory.SlabPool;
 
@@ -9,10 +11,34 @@ import io.mycat.jcache.memory.SlabPool;
  *
  */
 public class JcacheContext {
-		
+	
+	/**
+	 * 内存池
+	 */
 	private static SlabPool slabPool;
 	
+	/**
+	 * item 访问器
+	 */
 	private static ItemsAccessManager itemsAccessManager;
+	
+	/**
+	 * hashtable
+	 */
+	private static Assoc assoc;
+	
+	/**
+	 * hash
+	 */
+	private static Hash hash;
+
+	public static Hash getHash() {
+		return hash;
+	}
+
+	public static void setHash(Hash hash) {
+		JcacheContext.hash = hash;
+	}
 
 	public static SlabPool getSlabPool() {
 		return slabPool;
@@ -30,4 +56,11 @@ public class JcacheContext {
 		JcacheContext.itemsAccessManager = itemsAccessManager;
 	}
 	
+	public static Assoc getAssoc(){
+		return assoc;
+	}
+	
+	public static void setAssoc(Assoc assoc){
+		JcacheContext.assoc = assoc;
+	}
 }

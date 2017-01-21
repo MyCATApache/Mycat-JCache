@@ -9,8 +9,8 @@ package io.mycat.jcache.memory;
  */
 @Deprecated
 public class Item {
-	byte prev;   //记录上一个item的地址,主要用于LRU链和freelist链   这两个属性还有必要？？TODO
-	byte next;   //记录下一个item的地址,主要用于LRU链和freelist链  这两个属性还有必要？？TODO
+	byte prev;   
+	byte next;   
 	byte hNext;  //记录HashTable的下一个Item的地址 
 	/*
 	 * 最近访问的时间，只有set/add/replace等操作才会更新这个字段

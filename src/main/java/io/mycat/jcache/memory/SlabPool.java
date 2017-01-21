@@ -2,7 +2,6 @@ package io.mycat.jcache.memory;
 
 import java.io.RandomAccessFile;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.channels.FileChannel;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -44,6 +43,7 @@ public class SlabPool {
 	private long addr;
 	private long totalSize;
 
+	final AtomicBoolean allocLockStatus = new AtomicBoolean(false);
 	
 	static {
 		try {
@@ -57,8 +57,6 @@ public class SlabPool {
 			throw new RuntimeException(e);
 		}
 	}
-	
-	final AtomicBoolean allocLockStatus = new AtomicBoolean(false);
 	
 	public SlabPool(long memLimit,String fileName){
 		
@@ -94,13 +92,13 @@ public class SlabPool {
 			if(size % Settings.CHUNK_ALIGN_BYTES != 0)
 				size += Settings.CHUNK_ALIGN_BYTES-(size % Settings.CHUNK_ALIGN_BYTES);
 			
-			slabClassArr[i] = new SlabClass(size,Settings.slabPageSize/size);
+			slabClassArr[i] = new SlabClass(size,Settings.slabPageSize/size,this);
 			log.info("slab class "+i+": chunk size "+size+" item count "+slabClassArr[i].perSlab);
 			size *= Settings.factor;
 		}
 		
 		this.powerLargest = i; 
-		slabClassArr[powerLargest] = new SlabClass(Settings.itemSizeMax,Settings.slabPageSize/Settings.slabChunkSizeMax);
+		slabClassArr[powerLargest] = new SlabClass(Settings.itemSizeMax,Settings.slabPageSize/Settings.slabChunkSizeMax,this);
 		log.info("slab class "+i+": chunk size "+size+" item count "+slabClassArr[powerLargest].perSlab);
 		
 		/* 预分配slab 在 slabclasss 中 */
@@ -231,9 +229,7 @@ public class SlabPool {
 	
 	
 	public void memoryInitSet(long addr,byte value,int len){
-		IntStream.range(0, len).forEach(f->{
-			UnSafeUtil.putByte(addr+f, value);
-		});
+		UnSafeUtil.unsafe.setMemory(addr, len, value);
 	}
 	
 	/**
@@ -270,9 +266,9 @@ public class SlabPool {
 	 * @param flags
 	 * @return 返回 item 内存首地址
 	 */
-	public long slabs_alloc(int size,int slabsClassid,int flags){
+	public long slabs_alloc(int size,int slabsClassid,boolean flags){
 		SlabClass slabc = slabClassArr[slabsClassid];
-		return slabc.slabs_alloc(size,flags);
+		return slabc.do_slabs_alloc(size,slabsClassid,flags);
 	}
 	
 	/**

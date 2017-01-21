@@ -4,11 +4,13 @@ import java.io.UnsupportedEncodingException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.mycat.jcache.context.JcacheContext;
 import io.mycat.jcache.enums.ItemFlags;
 import io.mycat.jcache.enums.LRU_TYPE_MAP;
 import io.mycat.jcache.enums.Store_item_type;
-import io.mycat.jcache.memhashtable.HashTable;
 import io.mycat.jcache.net.JcacheGlobalConfig;
 import io.mycat.jcache.net.conn.Connection;
 import io.mycat.jcache.setting.Settings;
@@ -22,6 +24,9 @@ import io.mycat.jcache.util.ItemUtil;
  *
  */
 public class Items {
+	
+	public static Logger logger = LoggerFactory.getLogger(Items.class);
+	
 	private static  AtomicLong casIdGeneraytor = new AtomicLong();
 	final static AtomicBoolean[] allocItemStatus = new AtomicBoolean[Settings.POWER_LARGEST];
 	static {
@@ -60,7 +65,7 @@ public class Items {
 				lru_pull_tail(clsid,LRU_TYPE_MAP.COLD_LRU.ordinal(),0,0);
 			}
 
-			itemaddr = JcacheContext.getSlabPool().slabs_alloc(ntotal, clsid, flags);
+			itemaddr = JcacheContext.getSlabPool().slabs_alloc(ntotal, clsid, false);
 
 			if(Settings.expireZeroDoesNotEvict){
 				total_bytes -= noexp_lru_size(clsid);  //TODO
@@ -118,10 +123,12 @@ public class Items {
 		return itemaddr;
 	}
 
-	public static long do_item_get(String key,Connection conn){
-		long addr = HashTable.find(key);
+	public static long do_item_get(String key,int nkey,long hv,Connection conn){
+		long addr = JcacheContext.getAssoc().assoc_find(key, nkey, hv);
+		logger.debug("do_item_get key : {}  addr : {}", key,addr);
 		int was_found = 0;
-		if(addr!=-1){
+		
+		if(addr!=0){
 //			ItemUtil.
 //			refcount_incr(&it->refcount); //TODO
 			was_found = 1;
@@ -162,17 +169,18 @@ public class Items {
 	public static Store_item_type do_store_item(long addr, Connection conn, long hv){
 		Store_item_type stored = Store_item_type.NOT_STORED;
 		String key = ItemUtil.getKey(addr);
-		long oldaddr = do_item_get(key,conn);
+		int nkey = ItemUtil.getNskey(addr);
+		long oldaddr = do_item_get(key,nkey,hv,conn);
 
 		/*
 		 * 只实现了 set 命令的处理
 		 */
-		if(oldaddr!=-1){
+		if(oldaddr!=0){
 		}
 
 		int failed_alloc = 0;
 		if(Store_item_type.NOT_STORED.equals(stored)&&failed_alloc==0){
-			if(oldaddr!=-1){
+			if(oldaddr!=0){
 				item_replace(oldaddr,addr,hv); //todo replace 
 			}else{
 				do_item_link(addr,hv);
@@ -180,7 +188,7 @@ public class Items {
 			}
 		}
 
-		if(oldaddr!=-1){
+		if(oldaddr!=0){
 			do_item_remove(oldaddr);  /* release our reference */
 		}
 
@@ -202,7 +210,8 @@ public class Items {
 
 		 /* Allocate a new CAS ID on link. */
 		ItemUtil.ITEM_set_cas(addr, Settings.useCas?get_cas_id():0);
-		HashTable.put(ItemUtil.getKey(addr), addr);
+		JcacheContext.getAssoc().assoc_insert(addr, hv);
+//		HashTable.put(ItemUtil.getKey(addr), addr);
 		item_link_q(addr);
 //		refcount_incr(ItemUtil.getRefCount(addr));
 //		item_stats_sizes_add(addr);
@@ -408,11 +417,12 @@ public class Items {
 
 	public  static long  do_item_touch(long addr,long expiretime,Connection conn){
 		String key = ItemUtil.getKey(addr);
-		Long item  = do_item_get(key,conn);
-		if(item!=null){
-			ItemUtil.setExpTime(addr,expiretime);
-		}
-		return item;
+		//TODO 
+//		Long item  = do_item_get(key,conn);
+//		if(item!=null){
+//			ItemUtil.setExpTime(addr,expiretime);
+//		}
+		return 0;
 	}
 
 //	public long lru_pull_tail(int slab_idx, int cur_lru, int total_chunks, boolean do_evict, int cur_hv){

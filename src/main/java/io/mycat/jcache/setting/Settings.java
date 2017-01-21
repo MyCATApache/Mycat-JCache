@@ -54,7 +54,8 @@ public class Settings {
 	public static int warmLruPct = 32;
 	public static boolean expireZeroDoesNotEvict = false;
 	public static int idleTimeout = 0;
-	public static short hashPowerInit = 0;
+	public static int hashPowerInit = 0;
+	public static int hashpower_default = 16; /* Initial power multiplier for the hash table */
 	public static boolean slabReassign = false; /* Whether or not slab reassignment is allowed */
 	public static short slabAutoMove = 0; /* Whether or not to automatically move slabs */
 	public static boolean shutdownCommand = false; /* allow shutdown command */

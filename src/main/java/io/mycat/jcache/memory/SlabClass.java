@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import io.mycat.jcache.enums.ItemFlags;
+import io.mycat.jcache.setting.Settings;
 import io.mycat.jcache.util.ItemUtil;
  
 	//typedef struct {
@@ -61,7 +62,6 @@ public class SlabClass {
 	/**
 	 * 还不清楚是干什么用的
 	 */
-	//TODO 还不清楚是干什么用的
 	AtomicInteger list_size;  /* size of prev array */
 	
 	/**
@@ -70,14 +70,21 @@ public class SlabClass {
 	AtomicInteger requested;  /* The number of requested bytes */
 			
 	final AtomicBoolean allocLockStatus = new AtomicBoolean(false);
+	/**
+	 * 创建空闲item 
+	 */
+	final AtomicBoolean slabsFreeStatus = new AtomicBoolean(false);
+		
+	private SlabPool pool;
 	
-	public SlabClass(int chunkSize, int perSlab){
+	public SlabClass(int chunkSize, int perSlab,SlabPool pool){
 		this.chunkSize = chunkSize;
 		this.perSlab = perSlab;
 		sl_curr = new AtomicInteger(0);
 		allocatedslabs = new AtomicInteger(0);
 		list_size = new AtomicInteger(0);
 		requested = new AtomicInteger(0);
+		this.pool = pool;
 	}	
 	
 	/**
@@ -87,23 +94,23 @@ public class SlabClass {
 	 * @param flags 
 	 * @return  item 内存地址
 	 */
-	public long slabs_alloc(int size,int flags){
+	public long do_slabs_alloc(int size,int id,boolean flags){
 		while (!allocLockStatus.compareAndSet(false, true)) {
 		}
 		
 		long addr = 0;
 		
 		try {
-			if(sl_curr.get()==0){
-				return 0;
-			}
+//			if(sl_curr.get()!=0){
+//				return 0;
+//			}
 			
 			if(size <= chunkSize){
 				/* fail unless we have space at the end of a recently allocated page,
 		           we have something on our freelist, or we could allocate a new page */
-//				if(slabc.sl_curr==0&&flags!=Settings.SLABS_ALLOC_NO_NEWPAGE){
-//					doSlabsNewSlab(slabsClassid);
-//				}
+				if(sl_curr.get()==0&&flags!=Settings.SLABS_ALLOC_NO_NEWPAGE){
+					pool.doSlabsNewSlab(id);
+				}
 				addr = slots.removeFirst();
 				byte it_flags = ItemUtil.getItflags(addr);
 				ItemUtil.setItflags(addr, (byte)(it_flags &~ItemFlags.ITEM_SLABBED.getFlags()));
@@ -117,13 +124,13 @@ public class SlabClass {
 			requested.addAndGet(size);
 			return addr;
 		} finally {
-			allocLockStatus.set(false);
+			allocLockStatus.lazySet(false);
 		}
 	}
 	
 	//创建空闲item  
 	public void doSlabsFree(long addr, int size,int id){
-		while (!allocLockStatus.compareAndSet(false, true)) { }
+		while (!slabsFreeStatus.compareAndSet(false, true)) { }
 		
 		try {
 			int it_flags = ItemUtil.getItflags(addr);
@@ -146,7 +153,7 @@ public class SlabClass {
 //				doSlabsFreeChunked(addr, size, id, slabc);
 			}
 		} finally {
-			allocLockStatus.set(false);
+			slabsFreeStatus.lazySet(false);
 		}
 	}
 
