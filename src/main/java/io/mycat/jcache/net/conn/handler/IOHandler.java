@@ -10,11 +10,11 @@ import io.mycat.jcache.net.conn.Connection;
 
 public interface IOHandler{
 	
-    public static Logger logger = LoggerFactory.getLogger(IOHandler.class);
+    Logger logger = LoggerFactory.getLogger(IOHandler.class);
 
-	public default void onClosed(Connection conn,String reason){}
+	default void onClosed(Connection conn,String reason){}
 
-	public default void onConnected(Connection conn) throws IOException {
+	default void onConnected(Connection conn) throws IOException {
 		logger.debug("onConnected(): {}", conn);
 	}
 
