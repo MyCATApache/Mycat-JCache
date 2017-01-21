@@ -2,13 +2,13 @@
 <Configuration status="info">
     <Appenders>
         <Console name="Console" target="SYSTEM_OUT">
-            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%-5level] [%thread] %logger{36}.%M:%L - %m%n"/>
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%-5level] [%thread] %logger{36}.%M(%F:%L) - %m%n"/>
         </Console>
 
         <RollingFile name="RollingFile" fileName="logs/jcache.log"
                      filePattern="logs/$${date:yyyy-MM}/mycat-jcache-%d{MM-dd}-%i.log.gz">
             <PatternLayout>
-                <Pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%-5level] [%thread] %logger{36}.%M:%L - %m%n</Pattern>
+                <Pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%-5level] [%thread] %logger{36}.%M(%F:%L) - %m%n</Pattern>
             </PatternLayout>
             <Policies>
                 <OnStartupTriggeringPolicy/>
