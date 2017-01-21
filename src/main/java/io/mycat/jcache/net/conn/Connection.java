@@ -18,11 +18,13 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.LinkedList;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 
 /**
  * @author liyanjun
+ * @author dragonwu
  */
 public class Connection implements Closeable, Runnable {
 
@@ -159,19 +161,25 @@ public class Connection implements Closeable, Runnable {
                 logger.info(" read bytes {}.", got);
                 // 处理指令
                 readBuffer.flip();
-
-                if (Protocol.negotiating.equals(JcacheGlobalConfig.prot)) {
+                if(Objects.equals(JcacheGlobalConfig.prot,Protocol.negotiating)){
                     byte magic = readBuffer.get(0);
-                    if ((magic & 0xff) == (BinaryProtocol.MAGIC_REQ & 0xff)) {
-                        setProtocol(Protocol.binary);
-                    } else {
-                        setProtocol(Protocol.ascii);
-                    }
-                    ioHandler = IOHandlerFactory.getHandler(getProtocol());
-                    ioHandler.doReadHandler(this);
+                    dynamicProtocol(magic);
                 }
+                ioHandler.doReadHandler(this);
             }
         }
+    }
+
+    /**
+     * 商定协议
+     */
+    private void dynamicProtocol(byte magic) {
+        if ((magic & 0xff) == (BinaryProtocol.MAGIC_REQ & 0xff)) {
+            setProtocol(Protocol.binary);
+        } else {
+            setProtocol(Protocol.ascii);
+        }
+        ioHandler = IOHandlerFactory.getHandler(getProtocol());
     }
 
     /**
