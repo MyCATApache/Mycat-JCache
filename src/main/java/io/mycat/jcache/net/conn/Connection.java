@@ -110,7 +110,7 @@ public class Connection implements Closeable, Runnable {
                     asynRead();
                 }
                 if (selectionKey.isWritable()) {
-                    logger.debug("select-key writ");
+                    logger.debug("select-key write");
                     asynWrite();
                 }
             } else {
@@ -123,7 +123,7 @@ public class Connection implements Closeable, Runnable {
                     logger.debug(this + " socket key canceled");
                 }
             } else {
-                logger.warn(this + " " + e);
+                logger.error("connection id "+id ,e);
             }
             close("program err:" + e.toString());
 
@@ -162,6 +162,7 @@ public class Connection implements Closeable, Runnable {
                 // 处理指令
                 readBuffer.flip();
                 if(Objects.equals(JcacheGlobalConfig.prot,Protocol.negotiating)){
+                	
                     byte magic = readBuffer.get(0);
                     dynamicProtocol(magic);
                 }
