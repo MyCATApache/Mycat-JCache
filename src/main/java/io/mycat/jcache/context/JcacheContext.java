@@ -2,6 +2,7 @@ package io.mycat.jcache.context;
 
 import io.mycat.jcache.hash.Assoc;
 import io.mycat.jcache.hash.Hash;
+import io.mycat.jcache.hash.Segment;
 import io.mycat.jcache.items.ItemsAccessManager;
 import io.mycat.jcache.memory.SlabPool;
 
@@ -31,6 +32,12 @@ public class JcacheContext {
 	 * hash
 	 */
 	private static Hash hash;
+	
+	/**
+	 * 分段锁
+	 */
+	private static Segment segment;
+	
 
 	public static Hash getHash() {
 		return hash;
@@ -62,5 +69,13 @@ public class JcacheContext {
 	
 	public static void setAssoc(Assoc assoc){
 		JcacheContext.assoc = assoc;
+	}
+
+	public static Segment getSegment() {
+		return segment;
+	}
+
+	public static void setSegment(Segment segment) {
+		JcacheContext.segment = segment;
 	}
 }

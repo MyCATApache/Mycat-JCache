@@ -32,8 +32,8 @@ public class Connection implements Closeable, Runnable {
 
     private SelectionKey selectionKey;
     protected final SocketChannel channel;
-    private ByteBuffer writeBuffer;  //读缓冲区   //TODO 将 读写缓冲区优化为一个缓冲区
-    protected ByteBuffer readBuffer; //写缓冲区
+    private ByteBuffer writeBuffer;  //写缓冲区 
+//    protected ByteBuffer readBuffer; //读冲区
     private LinkedList<ByteBuffer> writeQueue = new LinkedList<ByteBuffer>();
     private AtomicBoolean writingFlag = new AtomicBoolean(false);
     private long id;

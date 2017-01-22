@@ -4,11 +4,15 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.mycat.jcache.context.JcacheContext;
 import io.mycat.jcache.enums.Protocol;
 import io.mycat.jcache.hash.Assoc;
 import io.mycat.jcache.hash.Hash;
 import io.mycat.jcache.hash.Hash_func_type;
+import io.mycat.jcache.hash.Segment;
 import io.mycat.jcache.hash.impl.AssocImpl;
 import io.mycat.jcache.hash.impl.HashImpl;
 import io.mycat.jcache.items.ItemsAccessManager;
@@ -26,6 +30,7 @@ import sun.misc.VM;
  */
 public class JcacheMain 
 {
+	private static final Logger logger = LoggerFactory.getLogger(JcacheMain.class);
 	/**
 	 * 主线程 将新连接分派给 reactor 的策略
 	 */
@@ -45,6 +50,8 @@ public class JcacheMain
     	/** 初始化 内存模块 配置   */
     	initMemoryConfig();
     	
+    	memcached_thread_init(Settings.numThreads);
+    	
     	assoc_init(Settings.hashPowerInit);
 
     	startJcacheServer();
@@ -62,6 +69,52 @@ public class JcacheMain
 		acceptor.start();
     }
     
+    /*
+     * Initializes the thread subsystem, creating various worker threads.
+     *
+     * nthreads  Number of worker event handler threads to spawn
+     */
+    private static void memcached_thread_init(int nthreads){
+    	int i;
+    	int power;
+    	
+    	for(i= 0; i< Settings.POWER_LARGEST;i++){
+//    		pthread_mutex_init(&lru_locks[i], NULL);  //TODO 
+    	}
+    	
+//        pthread_mutex_init(&worker_hang_lock, NULL);
+//
+//        pthread_mutex_init(&init_lock, NULL);
+//        pthread_cond_init(&init_cond, NULL);
+//
+//        pthread_mutex_init(&cqi_freelist_lock, NULL);
+//    	  cqi_freelist = NULL;
+        /* Want a wide lock table, but don't waste memory */
+    	
+        if (nthreads < 3) {
+            power = 10;
+        } else if (nthreads < 4) {
+            power = 11;
+        } else if (nthreads < 5) {
+            power = 12;
+        } else {
+            /* 8192 buckets, and central locks don't scale much past 5 threads */
+            power = 13;
+        }
+        
+        if (power >= Settings.hashPowerInit) {
+        	if(logger.isErrorEnabled()){
+        		logger.error("Hash table power size {} cannot be equal to or less than item lock table {}", Settings.hashPowerInit, power);
+        		logger.error("Item lock table grows with `-t N` (worker threadcount)");
+        		logger.error("Hash table grows with `-o hashpower=N` \n");
+        	}
+            System.exit(0);
+        }
+        
+        Segment segment = new Segment(power);
+        JcacheContext.setSegment(segment);
+    }
+    
     /**
      * 初始化hashtable  TODO 待hashtable 完善后,完成此部分初始化,目前hashtable 设定为固定值
      */
@@ -72,7 +125,6 @@ public class JcacheMain
     	Assoc assoc = new AssocImpl();
     	assoc.assoc_init(hashpower_init);
     	JcacheContext.setAssoc(assoc);
-
 	}
 
 	/**

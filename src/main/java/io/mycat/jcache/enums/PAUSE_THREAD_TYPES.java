@@ -1,0 +1,10 @@
+package io.mycat.jcache.enums;
+
+public enum PAUSE_THREAD_TYPES {
+	
+	PAUSE_ALL_THREADS,
+	PAUSE_WORKER_THREADS,
+	RESUME_ALL_THREADS,
+	RESUME_WORKER_THREADS
+
+}

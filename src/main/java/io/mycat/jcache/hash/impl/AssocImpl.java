@@ -2,24 +2,32 @@ package io.mycat.jcache.hash.impl;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.mycat.jcache.context.JcacheContext;
+import io.mycat.jcache.enums.PAUSE_THREAD_TYPES;
 import io.mycat.jcache.hash.Assoc;
-import io.mycat.jcache.items.Items;
 import io.mycat.jcache.setting.Settings;
 import io.mycat.jcache.util.ItemUtil;
 import io.mycat.jcache.util.UnSafeUtil;
 
+/**
+ * memcached 高仿版 hashtable
+ * @author liyanjun
+ *
+ */
 @SuppressWarnings("restriction")
-public class AssocImpl implements Assoc{
+public class AssocImpl implements Assoc,Runnable{
 	
 	private static Logger logger = LoggerFactory.getLogger(AssocImpl.class);
 	
 	/* how many powers of 2's worth of buckets we use */
-	private int hashpower = Settings.hashpower_default;
+	private static long hashpower = Settings.hashpower_default;
 	
 	/* Main hash table. This is where we look except during expansion. */
 	private static long primary_hashtable;
@@ -34,8 +42,8 @@ public class AssocImpl implements Assoc{
 	private static AtomicLong hash_items = new AtomicLong(0);
 	
 	/* Flag: Are we in the middle of expanding now? */
-	private static boolean expanding = false;
-	private static boolean started_expanding = false;
+	private static volatile boolean expanding = false;
+	private static volatile boolean started_expanding = false;
 	
 	/*
 	 * During expansion we migrate values with bucket granularity; this is how
@@ -44,6 +52,19 @@ public class AssocImpl implements Assoc{
 	private static long expand_bucket = 0;
 	
 	private final static AtomicBoolean hash_items_counter_lock = new AtomicBoolean(false);
+	
+	private static Lock maintenance_lock = new ReentrantLock();
+	
+	private static Condition maintenance_cond = maintenance_lock.newCondition();
+	
+	private static volatile int do_run_maintenance_thread = 1;
+	
+	private static final int DEFAULT_HASH_BULK_MOVE = 1;
+	
+	private static int hash_bulk_move = DEFAULT_HASH_BULK_MOVE;
+	
+	/* see Unsafe  */
+	private final static int addresssize = 8;
 
 	@Override
 	public void assoc_init(int hashpower_init) {
@@ -51,20 +72,23 @@ public class AssocImpl implements Assoc{
 			hashpower = hashpower_init;
 		}
 //		int powerum = hashpower*UnSafeUtil.unsafe.addressSize();
-		int powerum = hashsize(hashpower) * 8;
+		int powerum = JcacheContext.getSegment().hashsize(hashpower) * addresssize;
 		primary_hashtable = UnSafeUtil.unsafe.allocateMemory(powerum);
 		UnSafeUtil.unsafe.setMemory(primary_hashtable, powerum, (byte)0);
 	}
 	
+	/**
+	 * hashtable 分配 情况，测试使用
+	 */
 	public void printHashtable(){
 		int cout = 1;
 		System.out.println("=======================");
-		for(int i = 0;i<hashsize(hashpower);i++){
+		for(int i = 0;i<JcacheContext.getSegment().hashsize(hashpower);i++){
 			if(cout%50==0){
 				cout = 1;
 				System.out.println(cout);
 			}
-			long index = primary_hashtable+i*8;
+			long index = primary_hashtable+i*addresssize;
 			long aa = UnSafeUtil.unsafe.getLong(index);
 			if(aa>0){
 				System.out.print(index+"="+aa+",");
@@ -75,6 +99,7 @@ public class AssocImpl implements Assoc{
 		System.out.println("=======================");
 	}
 
+	@SuppressWarnings("unused")
 	@Override
 	public long assoc_find(String key, int nkey, long hv) {
 		long it;
@@ -87,7 +112,11 @@ public class AssocImpl implements Assoc{
 			hashtableindex = primary_hashtable+(hashnum(hv,hashpower));
 			it = UnSafeUtil.getLong(hashtableindex);
 		}
-		logger.debug("assoc find key = {},hashindex = {} , hashaddr = {}",key,hashtableindex,it);
+		
+		if(logger.isDebugEnabled()){
+			logger.debug("assoc find key = {},hashindex = {} , hashaddr = {}",key,hashtableindex,it);
+		}
+		
 		long ret = 0;
 		int depth = 0;
 		while(it>0){
@@ -135,19 +164,21 @@ public class AssocImpl implements Assoc{
 		ItemUtil.setHNext(it, UnSafeUtil.getLong(hashtableindex));
 		UnSafeUtil.unsafe.putAddress(hashtableindex, it);
 		
-		logger.debug("assoc insert key = {},hashindex = {} , hashaddr = {}",ItemUtil.getKey(it),hashtableindex,it);
+		if(logger.isDebugEnabled()){
+			logger.debug("assoc insert key = {},hashindex = {} , hashaddr = {}",ItemUtil.getKey(it),hashtableindex,it);
+		}
+		
 		while(hash_items_counter_lock.compareAndSet(false, true)){}
 		try{
 			hash_items.incrementAndGet();
-		    if (! expanding && hash_items.get() > ((hashsize(hashpower) * 3) / 2)) {
-//		        assoc_start_expand();   // hashtable 扩容
-		    	System.out.println("hashtable 扩容");
+		    if (! expanding && hash_items.get() > ((JcacheContext.getSegment().hashsize(hashpower) * 3) / 2)) {
+		        assoc_start_expand();  //hashtable 扩容
 		    }
 		}finally{
 			hash_items_counter_lock.lazySet(false);
 		}
 		return true;
-	}
+	}	
 
 	@Override
 	public void assoc_delete(String key, int nkey, long hv) {
@@ -168,16 +199,149 @@ public class AssocImpl implements Assoc{
 	    assert(before != 0);
 	}
 	
-	private int hashsize(int n){
-		return 1<<n;
+	
+	private void assoc_start_expand(){
+		if(started_expanding){
+			return;
+		}
+		started_expanding = true;
+		maintenance_lock.lock();
+		try{
+			maintenance_cond.signal();
+		} finally {
+			maintenance_lock.unlock();
+		}
 	}
 	
-	private int hashmask(int n){
-		return hashsize(n) - 1;
+	/* grows the hashtable to the next power of 2. */
+	private static void assoc_expand(){
+		old_hashtable = primary_hashtable;
+		int powerum = JcacheContext.getSegment().hashsize(hashpower+1) * addresssize;
+		primary_hashtable = UnSafeUtil.unsafe.allocateMemory(powerum);
+		UnSafeUtil.unsafe.setMemory(primary_hashtable, powerum, (byte)0);
+		if(primary_hashtable > 0){
+			if(Settings.verbose > 1){
+				if(logger.isErrorEnabled()){
+					logger.error("Hash table expansion starting");
+				}
+			}
+			hashpower++;
+			expanding = true;
+			expand_bucket = 0;
+			//TODO stats_state
+		}else{
+			primary_hashtable = old_hashtable;
+			/* Bad news, but we can keep running. */
+		}
 	}
 	
-	private long hashnum(long hv,int n){
-		return (hv&hashmask(hashpower))*8;
+	@Override
+	public void run() {
+		assoc_maintenance_thread();
+	}
+	
+	private void assoc_maintenance_thread(){
+		maintenance_lock.lock();
+		try {
+			while(do_run_maintenance_thread>0){
+				int ii = 0;
+				
+				/* There is only one expansion thread, so no need to global lock. */
+				for(ii=0;ii<hash_bulk_move&&expanding;++ii){
+					long it =0l;
+					long next = 0l;
+					long bucket;
+					Lock item_lock;
+					
+					/* bucket = hv & hashmask(hashpower) =>the bucket of hash table
+		             * is the lowest N bits of the hv, and the bucket of item_locks is
+		             *  also the lowest M bits of hv, and N is greater than M.
+		             *  So we can process expanding with only one item_lock. cool! */
+					item_lock = JcacheContext.getSegment().item_trylock(expand_bucket);
+					if(item_lock!=null){
+						try {
+							for(it = UnSafeUtil.getLong(old_hashtable + (expand_bucket*addresssize));
+									it!=0;
+									it = next){
+									next = ItemUtil.getHNext(it);
+									long hash = JcacheContext.getHash().hash(ItemUtil.getKey(it), ItemUtil.getNskey(it));
+									bucket = hash&JcacheContext.getSegment().hashmask(hashpower);
+									long bucketaddr = primary_hashtable+(bucket*addresssize);
+									ItemUtil.setHNext(it, UnSafeUtil.getLong(bucketaddr));
+									UnSafeUtil.unsafe.putAddress(bucketaddr, it);
+								}
+								
+								UnSafeUtil.unsafe.setMemory(old_hashtable + (expand_bucket*addresssize), addresssize, (byte)0);						
+								expand_bucket ++;
+								
+								if(expand_bucket == JcacheContext.getSegment().hashsize(hashpower - 1)){
+									expanding = false;
+									UnSafeUtil.unsafe.freeMemory(old_hashtable);
+									//TODO stats_state
+									if(Settings.verbose > 1){
+										if(logger.isErrorEnabled()){
+											logger.error("Hash table expansion done");
+										}
+									}
+								}
+						} finally {
+							item_lock.unlock();
+						}
+					}else{
+						try {
+							Thread.sleep(10*1000);
+						} catch (InterruptedException e) {
+						}
+					}
+				}
+				
+				if(!expanding){
+					/* We are done expanding.. just wait for next invocation */
+					started_expanding = false;
+					try {
+						maintenance_cond.await();
+					} catch (InterruptedException e) {
+					}
+				}
+				/* assoc_expand() swaps out the hash table entirely, so we need
+	             * all threads to not hold any references related to the hash
+	             * table while this happens.
+	             * This is instead of a more complex, possibly slower algorithm to
+	             * allow dynamic hash table expansion without causing significant
+	             * wait times.
+	             */
+				pause_threads(PAUSE_THREAD_TYPES.PAUSE_ALL_THREADS);
+				assoc_expand();
+				pause_threads(PAUSE_THREAD_TYPES.RESUME_ALL_THREADS);
+				
+			}
+		} finally {
+			maintenance_lock.unlock();
+		}
+	}
+	
+	/* Must not be called with any deeper locks held 
+	 * TODO 
+	 */
+	private static void pause_threads(PAUSE_THREAD_TYPES type){
+		switch(type){
+		case PAUSE_ALL_THREADS:
+//			slabs_rebalancer_pause(); TODO
+//			lru_crawler_pause();
+//			lru_maintainer_pause();
+			return;
+		case PAUSE_WORKER_THREADS:
+			break;
+		case RESUME_ALL_THREADS:
+			return;
+		case RESUME_WORKER_THREADS:
+			break;
+		default:
+		}
+	}
+	
+	public static long hashnum(long hv,long n){
+		return (hv&JcacheContext.getSegment().hashmask(n))*addresssize;
 	}
 
 }
