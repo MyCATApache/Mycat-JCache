@@ -33,7 +33,7 @@ public class Connection implements Closeable, Runnable {
     private SelectionKey selectionKey;
     protected final SocketChannel channel;
     private ByteBuffer writeBuffer;  //写缓冲区 
-//    protected ByteBuffer readBuffer; //读冲区
+    protected ByteBuffer readBuffer; //读冲区
     private LinkedList<ByteBuffer> writeQueue = new LinkedList<ByteBuffer>();
     private AtomicBoolean writingFlag = new AtomicBoolean(false);
     private long id;
