@@ -65,6 +65,8 @@ public class AssocImpl implements Assoc,Runnable{
 	
 	/* see Unsafe  */
 	private final static int addresssize = 8;
+	
+	private Thread assoc_maintenance_thread;
 
 	@Override
 	public void assoc_init(int hashpower_init) {
@@ -75,6 +77,8 @@ public class AssocImpl implements Assoc,Runnable{
 		int powerum = JcacheContext.getSegment().hashsize(hashpower) * addresssize;
 		primary_hashtable = UnSafeUtil.unsafe.allocateMemory(powerum);
 		UnSafeUtil.unsafe.setMemory(primary_hashtable, powerum, (byte)0);
+		assoc_maintenance_thread = new Thread(this);
+		assoc_maintenance_thread.start();
 	}
 	
 	/**
@@ -172,6 +176,8 @@ public class AssocImpl implements Assoc,Runnable{
 		try{
 			hash_items.incrementAndGet();
 		    if (! expanding && hash_items.get() > ((JcacheContext.getSegment().hashsize(hashpower) * 3) / 2)) {
+		    	System.out.println("hashtable  扩容");
+		    	assert(1==0);
 		        assoc_start_expand();  //hashtable 扩容
 		    }
 		}finally{
