@@ -465,6 +465,7 @@ public class Items {
 						hold_lock.unlock();
 						removed++;
 						/* If all we're finding are expired, can keep going */
+						
 						continue;
 					}
 					
@@ -524,6 +525,7 @@ public class Items {
 								removed++;
 							}
 							break;
+						case NOEXP_LRU:
 					}
 					
 					if(it!=0){
