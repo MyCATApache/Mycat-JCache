@@ -1,5 +1,7 @@
 package io.mycat.jcache.context;
 
+import java.util.concurrent.ExecutorService;
+
 import io.mycat.jcache.hash.Assoc;
 import io.mycat.jcache.hash.Hash;
 import io.mycat.jcache.hash.Segment;
@@ -38,7 +40,12 @@ public class JcacheContext {
 	 */
 	private static Segment segment;
 	
+	/**
+	 * worker threads
+	 */
+	private static ExecutorService executor;
 
+	
 	public static Hash getHash() {
 		return hash;
 	}
@@ -77,5 +84,13 @@ public class JcacheContext {
 
 	public static void setSegment(Segment segment) {
 		JcacheContext.segment = segment;
+	}
+
+	public static ExecutorService getExecutor() {
+		return executor;
+	}
+
+	public static void setExecutor(ExecutorService executor) {
+		JcacheContext.executor = executor;
 	}
 }

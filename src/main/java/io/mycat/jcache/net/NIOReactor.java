@@ -23,14 +23,11 @@ public final class NIOReactor extends Thread{
 	private final Selector selector;
 
 	private final LinkedTransferQueue<Connection> registerQueue;
-	
-	final ExecutorService executor;
 
-	public NIOReactor(String name,ExecutorService executorService) throws IOException {
+	public NIOReactor(String name) throws IOException {
 		super.setName(name);
 		this.selector = Selector.open();
 		this.registerQueue = new LinkedTransferQueue<>();  // 这里不使用 ConcurrentLinkedQueue 的原因在于,可能acceptor 和reactor同时操作队列
-		this.executor = executorService;
 	}
 	
 	/**

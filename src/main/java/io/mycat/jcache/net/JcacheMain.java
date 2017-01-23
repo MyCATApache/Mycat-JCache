@@ -3,6 +3,7 @@ package io.mycat.jcache.net;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -113,6 +114,7 @@ public class JcacheMain
         
         Segment segment = new Segment(power);
         JcacheContext.setSegment(segment);
+        JcacheContext.setExecutor(Executors.newWorkStealingPool(Settings.numThreads));
     }
     
     /**

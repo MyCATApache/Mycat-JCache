@@ -285,5 +285,9 @@ public class SlabPool {
 	public long getTotalSize() {
 		return totalSize;
 	}
+
+	public SlabClass[] getSlabClassArr() {
+		return slabClassArr;
+	}
 	
 }

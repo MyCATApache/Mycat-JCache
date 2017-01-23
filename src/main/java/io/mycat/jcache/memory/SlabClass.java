@@ -4,10 +4,12 @@ import java.util.LinkedList;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import io.mycat.jcache.enums.ItemFlags;
 import io.mycat.jcache.setting.Settings;
 import io.mycat.jcache.util.ItemUtil;
+import io.mycat.jcache.util.UnSafeUtil;
  
 	//typedef struct {
 	//    unsigned int size;      /* sizes of items */
@@ -77,6 +79,20 @@ public class SlabClass {
 		
 	private SlabPool pool;
 	
+	/**
+	 * lru 链表 头
+	 */
+	private long head;
+	
+	/**
+	 * lru 表尾
+	 */
+	private long tail;
+	
+	private AtomicLong sizes_bytes = new AtomicLong(0);
+	
+	private AtomicLong sizes = new AtomicLong(0);
+	
 	public SlabClass(int chunkSize, int perSlab,SlabPool pool){
 		this.chunkSize = chunkSize;
 		this.perSlab = perSlab;
@@ -114,7 +130,7 @@ public class SlabClass {
 				addr = slots.removeFirst();
 				byte it_flags = ItemUtil.getItflags(addr);
 				ItemUtil.setItflags(addr, (byte)(it_flags &~ItemFlags.ITEM_SLABBED.getFlags()));
-				ItemUtil.setRefCount(addr,(short)1);
+				ItemUtil.incrRefCount(addr);
 				sl_curr.decrementAndGet();
 			}else{
 				 /* Dealing with a chunked item. */
@@ -171,6 +187,54 @@ public class SlabClass {
 
 	public void setPerSlab(int perSlab) {
 		this.perSlab = perSlab;
+	}
+
+	public long getHead() {
+		return head;
+	}
+
+	public void setHead(long head) {
+		this.head = head;
+	}
+
+	public long getTail() {
+		return tail;
+	}
+
+	public void setTail(long tail) {
+		this.tail = tail;
+	}
+
+	public long getSizes_bytes() {
+		return sizes_bytes.get();
+	}
+	
+	public void incrSize_bytes(long delta){
+		sizes_bytes.addAndGet(delta);
+	}
+	
+	public void decrSize_bytes(long delta){
+		sizes_bytes.addAndGet(-delta);
+	}
+	
+	public long incrSize_bytes(){
+		return sizes_bytes.incrementAndGet();
+	}
+	
+	public long decrSize_byte(){
+		return sizes_bytes.decrementAndGet();
+	}
+
+	public long getSizes() {
+		return sizes.get();
+	}
+
+	public long incrSizes(){
+		return sizes.incrementAndGet();
+	}
+	
+	public long decrSizes(){
+		return sizes.decrementAndGet();
 	}
 
 }

@@ -1,6 +1,7 @@
 package io.mycat.jcache.net.command.binary;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,6 +10,8 @@ import io.mycat.jcache.net.command.Command;
 import io.mycat.jcache.net.conn.Connection;
 import io.mycat.jcache.net.conn.handler.BinaryProtocol;
 import io.mycat.jcache.net.conn.handler.BinaryResponseHeader;
+import io.mycat.jcache.setting.Settings;
+import io.mycat.jcache.util.ItemUtil;
 
 /**
 	Request:
@@ -39,23 +42,43 @@ import io.mycat.jcache.net.conn.handler.BinaryResponseHeader;
 public class BinaryFlushCommand implements Command{
 	
 	private static final Logger logger = LoggerFactory.getLogger(BinaryFlushCommand.class);
-	
-	private int expir;
-	
+		
 	@Override
 	public void execute(Connection conn) throws IOException {
+
+		long new_oldest = 0;
 		
-		int keylen = conn.getBinaryRequestHeader().getKeylen();
-		int bodylen = conn.getBinaryRequestHeader().getBodylen();
-		int extlen  = conn.getBinaryRequestHeader().getExtlen();
+		if(!Settings.flushEnabled){
+			writeResponse(conn, BinaryProtocol.OPCODE_FLUSH, ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_AUTH_ERROR.getStatus(), 0L);
+			return;
+		}
 		
-		if (keylen == 0 && bodylen == extlen && (extlen == 0 || extlen == 4)) {
-			logger.info("execute command flush ");
-			//TODO bin_read_flush_exptime
-			BinaryResponseHeader header = buildHeader(conn.getBinaryRequestHeader(),BinaryProtocol.OPCODE_FLUSH,null,null,null,0l);
-			writeResponse(conn,header,null,null,null);
-        } else {
-        	writeResponse(conn, BinaryProtocol.OPCODE_FLUSH, ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_EINVAL.getStatus(), 0L);
-        }
+		ByteBuffer extras = readExtras(conn);
+		
+		long exptime = extras.getInt(4);
+		
+		exptime = exptime * 1000 + System.currentTimeMillis();
+		
+		if(exptime > 0){
+			new_oldest = ItemUtil.realtime(exptime);
+		}else{
+			new_oldest = System.currentTimeMillis();
+		}
+		
+		if(Settings.useCas){
+			Settings.oldestLive = new_oldest - 1000;
+			if(Settings.oldestLive < System.currentTimeMillis()){
+				Settings.oldestCas = ItemUtil.get_cas_id();
+			}
+		}else{
+			Settings.oldestLive = new_oldest;
+		}
+		//TODO STATS
+//	    pthread_mutex_lock(&c->thread->stats.mutex);
+//	    c->thread->stats.flush_cmds++;
+//	    pthread_mutex_unlock(&c->thread->stats.mutex);
+		BinaryResponseHeader header = buildHeader(conn.getBinaryRequestHeader(),BinaryProtocol.OPCODE_FLUSH,null,null,null,0l);
+		writeResponse(conn,header,null,null,null);
+
 	}
 }

@@ -73,19 +73,18 @@ public class Settings {
 	public static String hash_algorithm; //PigBrother hash algorithm
 	public static int ITEM_HEADER_LENGTH = 50;   /* item header length */
 	public static boolean SLABS_ALLOC_NO_NEWPAGE = true;
-	
-	public static int LRU_PULL_EVICT = 1;
-	public static int LRU_PULL_CRAWL_BLOCKS = 2;
 
 	/*
 	 * We only reposition items in the LRU queue if they haven't been repositioned
 	 * in this many seconds. That saves us from churning on frequently-accessed
 	 * items.
 	 */
-	public static int ITEM_UPDATE_INTERVAL= 60;
+	public static int ITEM_UPDATE_INTERVAL= 60 * 1000;
 	
 	public static int hashsize;  //临时参数
 	
 	public static String mapfile; // MappedByteBuffer 内存映射文件地址
+	
+	public static long process_started = System.currentTimeMillis();
 	
 }

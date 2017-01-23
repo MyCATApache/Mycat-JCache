@@ -1,5 +1,7 @@
 package io.mycat.jcache.util;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 import io.mycat.jcache.enums.ItemFlags;
 import io.mycat.jcache.setting.Settings;
 
@@ -42,9 +44,13 @@ public class ItemUtil {
 	private static final byte NSUFFIX=48;
 	private static final byte NSKEY=49;
 	private static final byte CAS=50;
-	private static final byte KEY=58;
+//	private static final byte KEY=58;
 //	private static final byte SUFFER=0;这两个字段偏移是动态的
 //	private static final byte VALUE=0;
+	
+	private static AtomicLong cas_id = new AtomicLong(0);
+	
+	private static long REALTIME_MAXDELTA = 60*60*24*30*1000;
 
 
 	////////////////////////////////// header begin ////////////////////////////////////////////////
@@ -179,11 +185,33 @@ public class ItemUtil {
 	 * item
 	 * @return
 	 */
-	public static short getRefCount(long addr){
+	public static int getRefCount(long addr){
 		//PigBrother
 		//return UnSafeUtil.getShort(addr+15);
-		return UnSafeUtil.getShortVolatile(addr+REFCOUNT);
+		return UnSafeUtil.getIntVolatile(addr+REFCOUNT);
 	}
+	
+    /**
+     * Atomically increments by one the current value.
+     *
+     * @return the updated value
+     */
+    public static int incrRefCount(long addr) {
+        return UnSafeUtil.incrementAndGet(addr+REFCOUNT);
+    }
+
+    /**
+     * Atomically decrements by one the current value.
+     *
+     * @return the updated value
+     */
+    public static int decrRefCount(long addr) {
+        return UnSafeUtil.decrementAndGet(addr+REFCOUNT);
+    }
+    
+    public static void setRefCount(long addr,int value){
+    	UnSafeUtil.putInt(addr+REFCOUNT, value);
+    }
 	
 	/**
 	 * which slab class we're in 标记item属于哪个slabclass下
@@ -453,11 +481,24 @@ public class ItemUtil {
 	 * @return
 	 */
 	public static int ITEM_ntotal(long addr){
-		//TODO 
-		return 0;
+		return CAS + getNskey(addr) + 1 + getNsuffix(addr) + getNbytes(addr)+(((getItflags(addr)&ItemFlags.ITEM_CAS.getFlags())==0)?0:8);
 	}
-
-	public static void setRefCount(long addr, short value) {
-		UnSafeUtil.putShort(addr+REFCOUNT,value);
+	
+	public static long get_cas_id(){
+		return cas_id.incrementAndGet();
+	}
+	
+	public static long realtime(long exptime){
+		/* no. of seconds in 30 days - largest possible delta exptime */
+		if(exptime==0) return 0;
+		
+		if(exptime > (REALTIME_MAXDELTA + System.currentTimeMillis())){
+			if(exptime <= Settings.process_started){
+				return System.currentTimeMillis();
+			}
+			return exptime - (exptime - Settings.process_started);
+		}else{
+			return exptime;
+		}
 	}
 }

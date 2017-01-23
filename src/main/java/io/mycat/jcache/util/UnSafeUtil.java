@@ -1,6 +1,7 @@
 package io.mycat.jcache.util;
 
 import java.lang.reflect.Field;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import sun.misc.Unsafe;
 
@@ -262,4 +263,42 @@ public class UnSafeUtil {
 	public static long getAndAddLong(long pos, long delta) {
 		return unsafe.getAndAddLong(null, pos, delta);
 	}
+	
+    /**
+     * Atomically increments by one the current value.
+     *
+     * @return the updated value
+     */
+    public static int incrementAndGet(long addr) {
+        return unsafe.getAndAddInt(null, addr, 1) + 1;
+    }
+
+    /**
+     * Atomically decrements by one the current value.
+     *
+     * @return the updated value
+     */
+    public static int decrementAndGet(long addr) {
+        return unsafe.getAndAddInt(null, addr, -1) - 1;
+    }
+    
+    /**
+     * Atomically adds the given value to the current value.
+     *
+     * @param delta the value to add
+     * @return the updated value
+     */
+    public static int addAndGet(long addr,int delta) {
+        return unsafe.getAndAddInt(null, addr, delta) + delta;
+    }
+    
+    /**
+     * Atomically adds the given value to the current value.
+     *
+     * @param delta the value to add
+     * @return the previous value
+     */
+    public static int getAndAdd(long addr,int delta) {
+        return unsafe.getAndAddInt(null, addr, delta);
+    }
 }

@@ -15,7 +15,7 @@ public class Segment {
 	private static int item_lock_count;
 	private long item_lock_hashpower;
 	
-	private Lock[] item_locks = null;
+	private ReentrantLock[] item_locks = null;
 	
 	public Segment(int power){
 		item_lock_count = hashsize(power);
@@ -43,8 +43,8 @@ public class Segment {
 		item_locks[(int)hv&hashmask(item_lock_hashpower)].unlock();
 	}
 	
-	public Lock item_trylock(long hv){
-		Lock lock = item_locks[(int)hv&hashmask(item_lock_hashpower)];
+	public ReentrantLock item_trylock(long hv){
+		ReentrantLock lock = item_locks[(int)hv&hashmask(item_lock_hashpower)];
 		if(lock.tryLock()){
 			return lock;
 		}

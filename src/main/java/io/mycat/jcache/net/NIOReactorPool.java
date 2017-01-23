@@ -20,19 +20,14 @@ public class NIOReactorPool {
 	private final String rectorname = "rector";
 	
 	private final ReactorStrategy startegy;
-	/**
-	 * 多个 reactor 共用一个线程池
-	 */
-	private final ExecutorService executor;
 	
 	private volatile int lastreactor; // 上一次处理连接的reactor，使用volatile保证多线程操作时内存可见
 	
 	public NIOReactorPool(int poolSize,ReactorStrategy startegy) throws IOException{
-		executor =Executors.newWorkStealingPool(Settings.numThreads);
 		this.reactors = new NIOReactor[poolSize];
 		this.startegy = startegy;
 		for (int i = 0; i < poolSize; i++) {
-			NIOReactor reactor = new NIOReactor(rectorname + "-" + i,executor);
+			NIOReactor reactor = new NIOReactor(rectorname + "-" + i);
 			reactors[i] = reactor;
 			reactor.start();
 		}
