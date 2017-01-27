@@ -8,13 +8,13 @@
  */
 package io.mycat.jcache.memhashtable;
 
-import io.mycat.jcache.hash.Hash;
+import java.nio.ByteBuffer;
+
 import io.mycat.jcache.hash.Hash_func_type;
+import io.mycat.jcache.hash.Hash_init;
 import io.mycat.jcache.hash.impl.HashImpl;
 import io.mycat.jcache.setting.Settings;
 import io.mycat.jcache.util.ItemUtil;
-
-import java.nio.ByteBuffer;
 
 /**
  * Created by PigBrother(LZS/LZY) on 2016/12/15 7:17.
@@ -25,7 +25,10 @@ import java.nio.ByteBuffer;
  */
 public class HashTable {
     private static ByteBuffer cached = ByteBuffer.allocateDirect(Settings.hashsize);
-    static Hash hash = new HashImpl(Hash_func_type.JENKINS_HASH);
+    static Hash_init hash = new HashImpl();
+    static{
+    	hash.hash_init(Hash_func_type.PIG_HASH);
+    }
 /*    static {
         for (int i = 0; i < 0xfffffff; i++) {
             cached.putLong(-1);

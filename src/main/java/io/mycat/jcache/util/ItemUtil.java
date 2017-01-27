@@ -160,7 +160,7 @@ public class ItemUtil {
 	}
 	
 	public static void setExpTime(long addr,long expTime){
-		UnSafeUtil.putLong(addr+EXPTIME, expTime);
+		UnSafeUtil.putLongVolatile(addr+EXPTIME, expTime);
 	}
 	
 	/**
@@ -197,7 +197,7 @@ public class ItemUtil {
      * @return the updated value
      */
     public static int incrRefCount(long addr) {
-        return UnSafeUtil.incrementAndGet(addr+REFCOUNT);
+        return UnSafeUtil.incrementAndGetInt(addr+REFCOUNT);
     }
 
     /**
@@ -206,7 +206,7 @@ public class ItemUtil {
      * @return the updated value
      */
     public static int decrRefCount(long addr) {
-        return UnSafeUtil.decrementAndGet(addr+REFCOUNT);
+        return UnSafeUtil.decrementAndGetInt(addr+REFCOUNT);
     }
     
     public static void setRefCount(long addr,int value){

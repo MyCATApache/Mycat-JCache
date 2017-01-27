@@ -50,7 +50,8 @@ import java.util.UUID;
  */
 public class TestHashCode {
     public static void main(String[] args) {
-        Hash hash = new HashImpl(Hash_func_type.PIG_HASH);
+    	Hash_init hash = new HashImpl();
+    	hash.hash_init(Hash_func_type.PIG_HASH);
         Random r = new Random();
         String key;
         int tmp = 1;

@@ -7,6 +7,8 @@ import io.mycat.jcache.net.conn.handler.BinaryProtocol;
 import io.mycat.jcache.net.conn.handler.BinaryRequestHeader;
 import io.mycat.jcache.net.conn.handler.IOHandler;
 import io.mycat.jcache.net.conn.handler.IOHandlerFactory;
+import io.mycat.jcache.setting.Settings;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -161,7 +163,7 @@ public class Connection implements Closeable, Runnable {
                 logger.info(" read bytes {}.", got);
                 // 处理指令
                 readBuffer.flip();
-                if(Objects.equals(JcacheGlobalConfig.prot,Protocol.negotiating)){
+                if(Objects.equals(Settings.binding_protocol,Protocol.negotiating)){
                 	
                     byte magic = readBuffer.get(0);
                     dynamicProtocol(magic);

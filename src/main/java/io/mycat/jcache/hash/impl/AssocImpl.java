@@ -63,9 +63,6 @@ public class AssocImpl implements Assoc,Runnable{
 	
 	private static int hash_bulk_move = DEFAULT_HASH_BULK_MOVE;
 	
-	/* see Unsafe  */
-	private final static int addresssize = 8;
-	
 	private Thread assoc_maintenance_thread;
 
 	@Override
@@ -74,7 +71,7 @@ public class AssocImpl implements Assoc,Runnable{
 			hashpower = hashpower_init;
 		}
 //		int powerum = hashpower*UnSafeUtil.unsafe.addressSize();
-		int powerum = JcacheContext.getSegment().hashsize(hashpower) * addresssize;
+		int powerum = JcacheContext.hashsize(hashpower) * UnSafeUtil.addresssize;
 		primary_hashtable = UnSafeUtil.unsafe.allocateMemory(powerum);
 		UnSafeUtil.unsafe.setMemory(primary_hashtable, powerum, (byte)0);
 		assoc_maintenance_thread = new Thread(this);
@@ -87,12 +84,12 @@ public class AssocImpl implements Assoc,Runnable{
 	public void printHashtable(){
 		int cout = 1;
 		System.out.println("=======================");
-		for(int i = 0;i<JcacheContext.getSegment().hashsize(hashpower);i++){
+		for(int i = 0;i<JcacheContext.hashsize(hashpower);i++){
 			if(cout%50==0){
 				cout = 1;
 				System.out.println(cout);
 			}
-			long index = primary_hashtable+i*addresssize;
+			long index = primary_hashtable+i*UnSafeUtil.addresssize;
 			long aa = UnSafeUtil.unsafe.getLong(index);
 			if(aa>0){
 				System.out.print(index+"="+aa+",");
@@ -103,7 +100,6 @@ public class AssocImpl implements Assoc,Runnable{
 		System.out.println("=======================");
 	}
 
-	@SuppressWarnings("unused")
 	@Override
 	public long assoc_find(String key, int nkey, long hv) {
 		long it;
@@ -175,7 +171,7 @@ public class AssocImpl implements Assoc,Runnable{
 		while(hash_items_counter_lock.compareAndSet(false, true)){}
 		try{
 			hash_items.incrementAndGet();
-		    if (! expanding && hash_items.get() > ((JcacheContext.getSegment().hashsize(hashpower) * 3) / 2)) {
+		    if (! expanding && hash_items.get() > ((JcacheContext.hashsize(hashpower) * 3) / 2)) {
 		    	System.out.println("hashtable  扩容");
 		    	assert(1==0);
 		        assoc_start_expand();  //hashtable 扩容
@@ -202,7 +198,7 @@ public class AssocImpl implements Assoc,Runnable{
 		}
 		/* Note:  we never actually get here.  the callers don't delete things
 	       they can't find. */
-	    assert(before != 0);
+//	    assert(before != 0);
 	}
 	
 	
@@ -222,7 +218,7 @@ public class AssocImpl implements Assoc,Runnable{
 	/* grows the hashtable to the next power of 2. */
 	private static void assoc_expand(){
 		old_hashtable = primary_hashtable;
-		int powerum = JcacheContext.getSegment().hashsize(hashpower+1) * addresssize;
+		int powerum = JcacheContext.hashsize(hashpower+1) * UnSafeUtil.addresssize;
 		primary_hashtable = UnSafeUtil.unsafe.allocateMemory(powerum);
 		UnSafeUtil.unsafe.setMemory(primary_hashtable, powerum, (byte)0);
 		if(primary_hashtable > 0){
@@ -266,21 +262,21 @@ public class AssocImpl implements Assoc,Runnable{
 					item_lock = JcacheContext.getSegment().item_trylock(expand_bucket);
 					if(item_lock!=null){
 						try {
-							for(it = UnSafeUtil.getLong(old_hashtable + (expand_bucket*addresssize));
+							for(it = UnSafeUtil.getLong(old_hashtable + (expand_bucket*UnSafeUtil.addresssize));
 									it!=0;
 									it = next){
 									next = ItemUtil.getHNext(it);
 									long hash = JcacheContext.getHash().hash(ItemUtil.getKey(it), ItemUtil.getNskey(it));
-									bucket = hash&JcacheContext.getSegment().hashmask(hashpower);
-									long bucketaddr = primary_hashtable+(bucket*addresssize);
+									bucket = hash&JcacheContext.hashmask(hashpower);
+									long bucketaddr = primary_hashtable+(bucket*UnSafeUtil.addresssize);
 									ItemUtil.setHNext(it, UnSafeUtil.getLong(bucketaddr));
 									UnSafeUtil.unsafe.putAddress(bucketaddr, it);
 								}
 								
-								UnSafeUtil.unsafe.setMemory(old_hashtable + (expand_bucket*addresssize), addresssize, (byte)0);						
+								UnSafeUtil.unsafe.setMemory(old_hashtable + (expand_bucket*UnSafeUtil.addresssize), UnSafeUtil.addresssize, (byte)0);						
 								expand_bucket ++;
 								
-								if(expand_bucket == JcacheContext.getSegment().hashsize(hashpower - 1)){
+								if(expand_bucket == JcacheContext.hashsize(hashpower - 1)){
 									expanding = false;
 									UnSafeUtil.unsafe.freeMemory(old_hashtable);
 									//TODO stats_state
@@ -347,7 +343,7 @@ public class AssocImpl implements Assoc,Runnable{
 	}
 	
 	public static long hashnum(long hv,long n){
-		return (hv&JcacheContext.getSegment().hashmask(n))*addresssize;
+		return (hv&JcacheContext.hashmask(n))*UnSafeUtil.addresssize;
 	}
 
 }

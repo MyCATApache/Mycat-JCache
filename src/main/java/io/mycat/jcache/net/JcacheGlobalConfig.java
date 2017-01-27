@@ -42,13 +42,6 @@ public final class JcacheGlobalConfig {
 	 */
 	public static final String defaultCahrset = "UTF-8";
 	
-	/**
-	 * 绑定的协议 
-	 * -B 
-	 * - 可能值：ascii,binary,auto（默认）
-	 */
-	public static Protocol prot = Protocol.negotiating;
-	
 	/** Maximum length of a key */
 	public static final int KEY_MAX_LENGTH = 250;
 

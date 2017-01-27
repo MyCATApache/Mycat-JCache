@@ -33,14 +33,14 @@ public class Settings {
 	public static String socketPath = null;
 	public static boolean prealloc = true;
 	public static double factor = 1.25;
-	public static int chunkSize = 48; /* space for a modest key and value */
+	public static int chunkSize = 48;
 	public static int numThreads = 4; /* N workers */
 	public static int numThreadsPerUdp = 0;
 	public static String prefixDelimiter = ":";
-	public static short detailEnabled = 0;
+	public static boolean detailEnabled = false;
 	public static int reqsPerEvent = 20;
 	public static int backLog = 1024;
-	public static int binding_protocol = Protocol.negotiating.getValue();
+	public static Protocol binding_protocol = Protocol.negotiating;
 	public static int itemSizeMax = 1024*1024; /* The famous 1MB upper limit. */
 	public static int slabPageSize = 1024 * 1024; /* chunks are split from 1MB pages. */
 	public static int slabChunkSizeMax = slabPageSize;
@@ -64,14 +64,13 @@ public class Settings {
 	public static int crawlsPerSleep = 1000;  /* Number of seconds to let connections idle */
 	public static int loggerWatcherBufSize = 1024; /* size of logger's per-watcher buffer */
 	public static int loggerBufSize = 1024; /* size of per-thread logger buffer */
-	public static int MAX_NUMBER_OF_SLAB_CLASSES = 64;
 	
-	public static int POWER_SMALLEST = 1;
-	public static int POWER_LARGEST = 256;
-	public static int CHUNK_ALIGN_BYTES = 8;
-	public static int SLAB_GLOBAL_PAGE_POOL = 0; /* magic slab class for storing pages for reassignment */
+	
+	
+	
+	
+	
 	public static String hash_algorithm; //PigBrother hash algorithm
-	public static int ITEM_HEADER_LENGTH = 50;   /* item header length */
 	public static boolean SLABS_ALLOC_NO_NEWPAGE = true;
 
 	/*
@@ -87,4 +86,14 @@ public class Settings {
 	
 	public static long process_started = System.currentTimeMillis();
 	
+
+	
+	
+	public static final int MAX_NUMBER_OF_SLAB_CLASSES = 64;
+	public static final int POWER_SMALLEST = 1;
+	public static final int POWER_LARGEST = 256;
+	public static final int CHUNK_ALIGN_BYTES = 8;
+	public static final int SLAB_GLOBAL_PAGE_POOL = 0; /* magic slab class for storing pages for reassignment */
+	public static final int ITEM_HEADER_LENGTH = 50;   /* item header length */
+
 }

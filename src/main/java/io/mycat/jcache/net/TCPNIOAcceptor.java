@@ -6,6 +6,8 @@ package io.mycat.jcache.net;
 import io.mycat.jcache.net.conn.ConnectIdGenerator;
 import io.mycat.jcache.net.conn.Connection;
 import io.mycat.jcache.net.conn.handler.IOHandlerFactory;
+import io.mycat.jcache.setting.Settings;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,8 +96,8 @@ public final class TCPNIOAcceptor extends Thread {
     private Connection buildConnection(SocketChannel channel) {
         return new Connection(channel)
                 .setId(ConnectIdGenerator.getINSTNCE().getId())
-                .setProtocol(JcacheGlobalConfig.prot)
-                .setIOHanlder(IOHandlerFactory.getHandler(JcacheGlobalConfig.prot));
+                .setProtocol(Settings.binding_protocol)
+                .setIOHanlder(IOHandlerFactory.getHandler(Settings.binding_protocol));
     }
 
     private void registerNewClient(Connection conn) {

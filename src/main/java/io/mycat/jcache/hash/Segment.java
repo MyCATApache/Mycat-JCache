@@ -1,8 +1,9 @@
 package io.mycat.jcache.hash;
 
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.IntStream;
+
+import io.mycat.jcache.context.JcacheContext;
 
 /**
  * 锁分段
@@ -18,7 +19,7 @@ public class Segment {
 	private ReentrantLock[] item_locks = null;
 	
 	public Segment(int power){
-		item_lock_count = hashsize(power);
+		item_lock_count = JcacheContext.hashsize(power);
 		item_lock_hashpower = power;
 		item_locks = new ReentrantLock[item_lock_count];
 		
@@ -35,28 +36,20 @@ public class Segment {
 	 * without first locking and removing from the LRU.
 	 */
 	public void item_lock(long hv){
-		int index = (int)hv&hashmask(item_lock_hashpower);
+		int index = (int)hv&JcacheContext.hashmask(item_lock_hashpower);
 		item_locks[index].lock();
 	}
 	
 	public void item_unlock(long hv){
-		item_locks[(int)hv&hashmask(item_lock_hashpower)].unlock();
+		item_locks[(int)hv&JcacheContext.hashmask(item_lock_hashpower)].unlock();
 	}
 	
 	public ReentrantLock item_trylock(long hv){
-		ReentrantLock lock = item_locks[(int)hv&hashmask(item_lock_hashpower)];
+		ReentrantLock lock = item_locks[(int)hv&JcacheContext.hashmask(item_lock_hashpower)];
 		if(lock.tryLock()){
 			return lock;
 		}
 		return null;
-	}
-	
-	public int hashsize(long n){
-		return 1<<n;
-	}
-	
-	public int hashmask(long n){
-		return hashsize(n) - 1;
 	}
 
 }

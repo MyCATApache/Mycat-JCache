@@ -42,7 +42,7 @@ public class BinarySetCommand implements Command{
 		int exptime = extras.getInt(4);
 	
 		try {
-			long addr = JcacheContext.getItemsAccessManager().item_alloc(keystr, flags, exptime, readValueLength(conn)+2);
+			long addr = JcacheContext.getItemsAccessManager().item_alloc(keystr,keylen, flags, exptime, readValueLength(conn)+2);
 			if(addr==0){
 				if(!JcacheContext.getItemsAccessManager().item_size_ok(readKeyLength(conn), flags, readValueLength(conn)+2)){
 					writeResponse(conn,BinaryProtocol.OPCODE_SET,ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_E2BIG.getStatus(),0l);

@@ -49,10 +49,14 @@ public class HashImpl implements Hash_init {
                 Settings.hash_algorithm="Pig_SDBM_hash";
                 hash = new Pig_SDBM_hash();
                 break;
+            default:
+            	return -1;
         }
         return 0;
     }
-
+    public HashImpl(){
+    }
+    
     public HashImpl(Hash_func_type hashfunc_type){
         hash_init(hashfunc_type);
     }

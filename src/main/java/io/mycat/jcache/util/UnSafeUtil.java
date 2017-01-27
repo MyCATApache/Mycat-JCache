@@ -1,7 +1,6 @@
 package io.mycat.jcache.util;
 
 import java.lang.reflect.Field;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import sun.misc.Unsafe;
 
@@ -15,6 +14,8 @@ public class UnSafeUtil {
 	
 	public static final Unsafe unsafe;
 	public static final int BYTE_ARRAY_OFFSET;
+	/* see Unsafe  */
+	public final static int addresssize = 8;
 	
 	static{
 		try { 
@@ -264,12 +265,16 @@ public class UnSafeUtil {
 		return unsafe.getAndAddLong(null, pos, delta);
 	}
 	
+	public static long addAndGetLong(long pos,long delta){
+		return unsafe.getAndAddLong(null, pos, delta)+delta;
+	}
+	
     /**
      * Atomically increments by one the current value.
      *
      * @return the updated value
      */
-    public static int incrementAndGet(long addr) {
+    public static int incrementAndGetInt(long addr) {
         return unsafe.getAndAddInt(null, addr, 1) + 1;
     }
 
@@ -278,7 +283,7 @@ public class UnSafeUtil {
      *
      * @return the updated value
      */
-    public static int decrementAndGet(long addr) {
+    public static int decrementAndGetInt(long addr) {
         return unsafe.getAndAddInt(null, addr, -1) - 1;
     }
     
@@ -288,7 +293,7 @@ public class UnSafeUtil {
      * @param delta the value to add
      * @return the updated value
      */
-    public static int addAndGet(long addr,int delta) {
+    public static int addAndGetInt(long addr,int delta) {
         return unsafe.getAndAddInt(null, addr, delta) + delta;
     }
     
@@ -298,7 +303,12 @@ public class UnSafeUtil {
      * @param delta the value to add
      * @return the previous value
      */
-    public static int getAndAdd(long addr,int delta) {
+    public static int getAndAddInt(long addr,int delta) {
+    	
         return unsafe.getAndAddInt(null, addr, delta);
+    }
+    
+    public static void putAddress(long addr,long value){
+    	unsafe.putAddress(addr, value);
     }
 }
