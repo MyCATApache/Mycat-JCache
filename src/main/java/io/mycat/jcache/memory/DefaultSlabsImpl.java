@@ -283,11 +283,6 @@ public class DefaultSlabsImpl implements Slabs {
 	
 	/**
 	 * 内存模块初始化
-	 * 1. 初始化 slabclass 内存, slabclass  中存储每个slabclass 内存首地址.
-	 * 支持两种内存初始化方式
-	 *  如果是预分配，分配 mem_limit 堆外内存 并将 内存首地址 返回给 mem_base
-	 * 2. 
-	 * slab_sizes 参数 暂时没有起作用.
 	 */
 	@Override
 	public void slabs_init(long limit, double factor, boolean prealloc, int[] slab_sizes) {		
