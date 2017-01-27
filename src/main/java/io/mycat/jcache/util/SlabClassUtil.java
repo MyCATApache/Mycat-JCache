@@ -47,7 +47,6 @@ public class SlabClassUtil {
 	}
 	
 	public static void setSize(long addr,int value){
-		logger.info("SlabClassUtil setsize method  addr {},value {} ",addr,value);
 		UnSafeUtil.putInt(addr+size, value);
 	}
 	
