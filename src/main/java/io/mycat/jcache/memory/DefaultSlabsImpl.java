@@ -1,6 +1,5 @@
 package io.mycat.jcache.memory;
 
-import java.lang.reflect.Method;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
@@ -36,12 +35,6 @@ public class DefaultSlabsImpl implements Slabs {
 	 */
 	private static AtomicBoolean slabs_lock = new AtomicBoolean(false);
 	private static AtomicBoolean slabs_rebalance_lock = new AtomicBoolean(false);
-	
-	private static Method getMethod(Class<?> cls, String name, Class<?>... params) throws Exception {
-		Method m = cls.getDeclaredMethod(name, params);
-		m.setAccessible(true);
-		return m;
-	}
 	
 	/**
 	 * 为  slabclass 分配一个新的slab

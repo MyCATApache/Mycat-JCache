@@ -8,7 +8,9 @@ public interface Slabs {
 
 	
 	/** Allocate object of given length. 0 on error */ /*@null@*/
-	public static final int SLABS_ALLOC_NO_NEWPAGE = 0;
+	public static final int SLABS_ALLOC_NO_NEWPAGE = 1;  /* 不允许 slabclass 分配新的 page */
+	
+	public static final int SLABS_ALLOC_NEWPAGE = 0;  /* 允许 slabclass 分配新的 page */ 
 	
 	/** Init the subsystem. 1st argument is the limit on no. of bytes to allocate,
 	    0 if no limit. 2nd argument is the growth factor; each slab will use a chunk

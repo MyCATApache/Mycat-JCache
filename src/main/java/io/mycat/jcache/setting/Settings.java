@@ -71,7 +71,6 @@ public class Settings {
 	
 	
 	public static String hash_algorithm; //PigBrother hash algorithm
-	public static boolean SLABS_ALLOC_NO_NEWPAGE = true;
 
 	/*
 	 * We only reposition items in the LRU queue if they haven't been repositioned

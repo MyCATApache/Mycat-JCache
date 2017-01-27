@@ -76,7 +76,7 @@ public class SlabClassUtil {
 	}
 	
 	public static int incrSlCurr(long addr,int delta){
-		return UnSafeUtil.addAndGetInt(addr, delta);
+		return UnSafeUtil.addAndGetInt(addr+sl_curr, delta);
 	}
 	
 	public static int decrSlCurr(long addr){
@@ -110,7 +110,7 @@ public class SlabClassUtil {
 	 * @param value
 	 */
 	public static void setSlablistIndexValue(long addr,int index,long value){
-		long slabindex = addr + index *UnSafeUtil.addresssize;
+		long slabindex = addr +slab_list+ index *UnSafeUtil.addresssize;
 		UnSafeUtil.putLongVolatile(slabindex, value);
 	}
 	

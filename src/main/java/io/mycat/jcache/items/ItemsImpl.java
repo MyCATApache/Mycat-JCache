@@ -131,7 +131,7 @@ public class ItemsImpl implements Items{
 					lru_pull_tail(clsid,LRU_TYPE_MAP.COLD_LRU,0,0);
 				}
 
-				it = JcacheContext.getSlabPool().slabs_alloc(ntotal, clsid, total_bytesAddr, Slabs.SLABS_ALLOC_NO_NEWPAGE);
+				it = JcacheContext.getSlabPool().slabs_alloc(ntotal, clsid, total_bytesAddr, Slabs.SLABS_ALLOC_NEWPAGE);
 				long total_bytes = UnSafeUtil.getLong(total_bytesAddr);
 				if(Settings.expireZeroDoesNotEvict){
 					total_bytes -= noexp_lru_size(clsid); 

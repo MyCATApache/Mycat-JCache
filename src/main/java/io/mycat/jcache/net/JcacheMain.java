@@ -14,9 +14,11 @@ import io.mycat.jcache.context.StatsState;
 import io.mycat.jcache.enums.Protocol;
 import io.mycat.jcache.hash.Assoc;
 import io.mycat.jcache.hash.Hash_func_type;
-import io.mycat.jcache.hash.Hash_init;
 import io.mycat.jcache.hash.Segment;
 import io.mycat.jcache.hash.impl.AssocImpl;
+import io.mycat.jcache.hash.impl.algorithm.Jenkins_hash;
+import io.mycat.jcache.hash.impl.algorithm.Murmur3_32hash;
+import io.mycat.jcache.hash.impl.algorithm.Murmur3_64hash;
 import io.mycat.jcache.memory.DefaultSlabsImpl;
 import io.mycat.jcache.memory.Slabs;
 import io.mycat.jcache.net.strategy.ReactorSelectEnum;
@@ -100,6 +102,8 @@ public class JcacheMain
 	   	
 	   	stats_init();
 	   	
+	   	inithash();
+	   	
 	   	assoc_init(Settings.hashPowerInit);
 
     	/** 初始化 内存模块 配置   */
@@ -110,6 +114,24 @@ public class JcacheMain
 
     	startJcacheServer();
     }
+	
+	private static void inithash(){
+		String jdkBit = System.getProperty("sun.arch.data.model");
+		if(Hash_func_type.MURMUR3_HASH.equals(hash_type)){
+			if("32".equals(jdkBit)){
+				JcacheContext.setHash(new Murmur3_32hash());
+			}else if("64".equals(jdkBit)){
+				JcacheContext.setHash(new Murmur3_64hash());
+			}
+		}else if(Hash_func_type.JENKINS_HASH.equals(hash_type)){
+			JcacheContext.setHash(new Jenkins_hash());
+		}else{
+			if(logger.isErrorEnabled()){
+        		logger.error("Failed to initialize hash_algorithm!\n");
+        	}
+			System.exit(1);
+		}
+	}
 	
 	private static void stats_init(){
 		StatsState.accepting_conns.set(true);  /* assuming we start in this state. */
@@ -756,13 +778,6 @@ public class JcacheMain
     	if(Settings.lruMaintainerThread&&Settings.hotLruPct + Settings.warmLruPct > 80){
     		if(logger.isErrorEnabled()){
         		logger.error("hot_lru_pct + warm_lru_pct cannot be more than 80%% combined\n");
-        	}
-			System.exit(1);
-    	}
-    	
-    	if(((Hash_init)JcacheContext.getHash()).hash_init(hash_type)!=0){
-    		if(logger.isErrorEnabled()){
-        		logger.error("Failed to initialize hash_algorithm!\n");
         	}
 			System.exit(1);
     	}

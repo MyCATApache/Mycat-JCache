@@ -7,9 +7,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import io.mycat.jcache.enums.ItemFlags;
-import io.mycat.jcache.setting.Settings;
 import io.mycat.jcache.util.ItemUtil;
-import io.mycat.jcache.util.UnSafeUtil;
  
 	//typedef struct {
 	//    unsigned int size;      /* sizes of items */
@@ -123,7 +121,7 @@ public class SlabClass1 {
 		if(size <= chunkSize){
 			/* fail unless we have space at the end of a recently allocated page,
 	           we have something on our freelist, or we could allocate a new page */
-			if(sl_curr.get()==0&&flags!=Settings.SLABS_ALLOC_NO_NEWPAGE){
+			if(sl_curr.get()==0&&flags!=(Slabs.SLABS_ALLOC_NO_NEWPAGE==0)){
 //				pool.doSlabsNewSlab(id);
 			}
 			if(sl_curr.get()!=0){
