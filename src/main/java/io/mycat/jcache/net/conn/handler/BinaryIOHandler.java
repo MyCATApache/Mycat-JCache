@@ -26,12 +26,14 @@ public class BinaryIOHandler implements IOHandler{
     		if(!validateHeader(offset, limit)) {
     			logger.debug("C#{}B#{} validate protocol packet header: too short, ready to handle next the read event offset{},limit{}",
     				conn.getId(), readbuffer.hashCode(),offset,limit);
+    			readbuffer.compact();
     			return; 
     		}
     		int length = getPacketLength(readbuffer,offset);
     		if((length + offset)> limit) {
     			logger.debug("C#{}B#{} nNot a whole packet: required length = {} bytes, cur total length = {} bytes, "
     			 	+ "ready to handle the next read event", conn.getId(), readbuffer.hashCode(), length, limit);
+    			readbuffer.compact();
     			return;
     		}
 //fix  bug  some command only has header!!

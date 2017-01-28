@@ -2,7 +2,11 @@ package io.mycat.jcache.util;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.mycat.jcache.enums.ItemFlags;
+import io.mycat.jcache.net.JcacheMain;
 import io.mycat.jcache.setting.Settings;
 
 /**
@@ -11,7 +15,7 @@ import io.mycat.jcache.setting.Settings;
  * @author PigBrother
  * bytebuffer 组织形式， header 和 data 部分。                                                                                                                                                                       header 部分结束
  * prev,next,hnext,flushTime,expTime,nbytes,refCount,slabsClisd,it_flags,nsuffix,nskey,//    CAS,key,suffix,value
- * 0    8    16    24        32      40     44       46         47       48      49          50  58  58+key
+ * 0    8    16    24        32      40     44       48         49       50      51          52  60  60+key
  *
  * item   cas  key  suffix  data
  *
@@ -19,6 +23,9 @@ import io.mycat.jcache.setting.Settings;
  * 其中 "flag"  为 flag 的字符形式， "nbytes"  是 nbytes 的字符形式
  */
 public class ItemUtil {
+	
+	private static final Logger logger = LoggerFactory.getLogger(ItemUtil.class);
+
 	
 	public static String ItemToString(long addr){
 		return "{prev =" + getPrev(addr)+",next = "+getNext(addr)+",hnext = "+getHNext(addr)+", flushtime = "
@@ -39,11 +46,11 @@ public class ItemUtil {
 	private static final byte EXPTIME=32;
 	private static final byte NBYTES=40;
 	private static final byte REFCOUNT=44;
-	private static final byte SLABSCLISD=46;
-	private static final byte IT_FLAGS=47;
-	private static final byte NSUFFIX=48;
-	private static final byte NSKEY=49;
-	private static final byte CAS=50;
+	private static final byte SLABSCLISD=48;
+	private static final byte IT_FLAGS=49;
+	private static final byte NSUFFIX=50;
+	private static final byte NSKEY=51;
+	private static final byte CAS=52;
 //	private static final byte KEY=58;
 //	private static final byte SUFFER=0;这两个字段偏移是动态的
 //	private static final byte VALUE=0;
@@ -333,6 +340,7 @@ public class ItemUtil {
 	 */
 	public static void setKey(byte[] key_bytes, long addr){
 		if(key_bytes.length!=(getNskey(addr)&0xff)){
+			logger.error("Error, NSkey's values != key_bytes.length . key is {},nskey value is {}, key_bytes.legth is {}",getKey(addr),getNskey(addr),key_bytes.length);
 			throw new RuntimeException("Error, NSkey's values != key_bytes.length");
 		}
 		UnSafeUtil.setBytes(ITEM_key(addr), key_bytes, 0, key_bytes.length);

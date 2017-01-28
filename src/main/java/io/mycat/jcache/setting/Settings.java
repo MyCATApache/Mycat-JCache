@@ -9,6 +9,7 @@
 package io.mycat.jcache.setting;
 
 import io.mycat.jcache.enums.Protocol;
+import io.mycat.jcache.net.JcacheGlobalConfig;
 
 /**
  * 
@@ -59,7 +60,7 @@ public class Settings {
 	public static boolean slabReassign = false; /* Whether or not slab reassignment is allowed */
 	public static short slabAutoMove = 0; /* Whether or not to automatically move slabs */
 	public static boolean shutdownCommand = false; /* allow shutdown command */
-	public static int tailRepairTime = 0; /* LRU tail refcount leak repair time */
+	public static long tailRepairTime = JcacheGlobalConfig.TAIL_REPAIR_TIME_DEFAULT; /* LRU tail refcount leak repair time */
 	public static boolean flushEnabled = true; /* flush_all enabled */
 	public static int crawlsPerSleep = 1000;  /* Number of seconds to let connections idle */
 	public static int loggerWatcherBufSize = 1024; /* size of logger's per-watcher buffer */
@@ -93,6 +94,6 @@ public class Settings {
 	public static final int POWER_LARGEST = 256;
 	public static final int CHUNK_ALIGN_BYTES = 8;
 	public static final int SLAB_GLOBAL_PAGE_POOL = 0; /* magic slab class for storing pages for reassignment */
-	public static final int ITEM_HEADER_LENGTH = 50;   /* item header length */
+	public static final int ITEM_HEADER_LENGTH = 52;   /* item header length */
 
 }

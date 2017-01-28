@@ -136,6 +136,9 @@ public class ItemsAccessManager {
 		String key = ItemUtil.getKey(addr);
 		int nkey = ItemUtil.getNskey(addr);
 		long oldaddr = items.do_item_get(key,nkey,hv,conn);
+		
+		long new_it = 0;
+		int flags;
 
 		/*
 		 * 只实现了 set 命令的处理
@@ -146,11 +149,11 @@ public class ItemsAccessManager {
 		int failed_alloc = 0;
 		if(Store_item_type.NOT_STORED.equals(stored)&&failed_alloc==0){
 			if(oldaddr!=0){
-				item_replace(oldaddr,addr,hv); //todo replace 
+				item_replace(oldaddr,addr,hv);  
 			}else{
 				items.do_item_link(addr,hv);
-				stored = Store_item_type.STORED;
 			}
+			stored = Store_item_type.STORED;
 		}
 
 		if(oldaddr!=0){

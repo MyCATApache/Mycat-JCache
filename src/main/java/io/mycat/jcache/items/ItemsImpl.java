@@ -602,7 +602,7 @@ public class ItemsImpl implements Items{
 						continue;
 					}
 					/* Now see if the item is refcount locked */
-					if(refcount_incr(ItemUtil.getRefCount(search))!=2){
+					if(refcount_incr(search)!=2){
 						/* Note pathological case with ref'ed items in tail.
 			             * Can still unlink the item, but it won't be reusable yet */
 						itemstats[id][ItemStatsUtil.lrutail_reflocked]++;

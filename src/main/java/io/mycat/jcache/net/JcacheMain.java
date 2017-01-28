@@ -196,7 +196,7 @@ public class JcacheMain
         Settings.slabReassign = false;
         Settings.slabAutoMove = 0;
         Settings.shutdownCommand = false;
-        Settings.tailRepairTime = 0;
+        Settings.tailRepairTime = 1;
         Settings.flushEnabled = true;
         Settings.crawlsPerSleep = 1000;
         Settings.loggerWatcherBufSize = 1024;
@@ -205,7 +205,7 @@ public class JcacheMain
     
     
     private static void startJcacheServer() throws IOException {
-    	int port = ConfigLoader.getIntProperty("port",JcacheGlobalConfig.defaultPort);
+    	int port = ConfigLoader.getIntProperty("port",Settings.port);
     	int poolsize = ConfigLoader.getIntProperty("reactor.pool.size",JcacheGlobalConfig.defaulePoolSize);
     	String bindIp = ConfigLoader.getStringProperty("reactor.pool.bindIp", JcacheGlobalConfig.defaultPoolBindIp);
     	String reaStrategy = ConfigLoader.getStringProperty("reactor.pool.selectStrategy", JcacheGlobalConfig.defaultReactorSelectStrategy);
@@ -578,7 +578,7 @@ public class JcacheMain
 		                	}
 		    				System.exit(1);
 						}
-						Settings.tailRepairTime = Integer.parseInt(ops[1]);
+						Settings.tailRepairTime = Long.parseLong(ops[1]);
 						if(Settings.tailRepairTime < 10){
 							if(logger.isErrorEnabled()){
 		                		logger.error("Cannot set tail_repair_time to less than 10 seconds\n");

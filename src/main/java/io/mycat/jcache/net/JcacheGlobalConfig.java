@@ -6,16 +6,11 @@ import java.io.IOException;
 import io.mycat.jcache.enums.Protocol;
 
 /**
- * Mcache 全局配置
+ * jcache 全局配置
  * @author 
  *
  */
 public final class JcacheGlobalConfig {
-	
-	/**
-	 * 默认端口
-	 */
-	public static int defaultPort = 9000;
 	
 	/**
 	 * 默认reactor pool 大小
@@ -50,6 +45,10 @@ public final class JcacheGlobalConfig {
 	public static final long VALUE_MAX_LENGTH=1024*1024;
 	
 	/** current version */
-	public static final String version = "0.1.0";
+	public static final String version = "0.5.0";
+	
+	/** How long an object can reasonably be assumed to be locked before
+    	harvesting it on a low memory condition. Default: disabled. */
+	public static final int TAIL_REPAIR_TIME_DEFAULT = 0;
 	
 }

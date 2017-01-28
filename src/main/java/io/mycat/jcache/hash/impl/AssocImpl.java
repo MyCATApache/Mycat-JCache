@@ -173,7 +173,6 @@ public class AssocImpl implements Assoc,Runnable{
 			hash_items.incrementAndGet();
 		    if (! expanding && hash_items.get() > ((JcacheContext.hashsize(hashpower) * 3) / 2)) {
 		    	System.out.println("hashtable  扩容");
-		    	assert(1==0);
 		        assoc_start_expand();  //hashtable 扩容
 		    }
 		}finally{

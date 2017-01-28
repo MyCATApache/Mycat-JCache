@@ -357,10 +357,8 @@ public class DefaultSlabsImpl implements Slabs {
 		if(size ==0 || size > Settings.itemSizeMax){
 			return 0;
 		}
-		
-		long sc  = getSlabClass(res);
-		
-		while(size > SlabClassUtil.getSize(sc)){
+				
+		while(size > SlabClassUtil.getSize(getSlabClass(res))){
 			if(res++==Settings.POWER_LARGEST){
 				return Settings.POWER_LARGEST;
 			}
