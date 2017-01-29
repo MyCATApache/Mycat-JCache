@@ -145,7 +145,7 @@ public class ItemUtil {
 	public static long getTime(long addr){
 		//PigBrother
 		//return UnSafeUtil.getInt(addr+3);
-		return UnSafeUtil.getIntVolatile(addr+FLUSHTIME);
+		return UnSafeUtil.getLongVolatile(addr+FLUSHTIME);
 	}
 
 	public static void setTime(long addr,long time){
