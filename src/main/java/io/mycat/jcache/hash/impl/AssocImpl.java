@@ -107,10 +107,10 @@ public class AssocImpl implements Assoc,Runnable{
 		long hashtableindex;
 		if(expanding&&(oldbucket = (hashnum(hv,hashpower-1)))>=expand_bucket){
 			hashtableindex = old_hashtable+oldbucket;
-			it = UnSafeUtil.getLong(hashtableindex);
+			it = UnSafeUtil.unsafe.getAddress(hashtableindex);
 		}else{
 			hashtableindex = primary_hashtable+(hashnum(hv,hashpower));
-			it = UnSafeUtil.getLong(hashtableindex);
+			it = UnSafeUtil.unsafe.getAddress(hashtableindex);
 		}
 		
 		if(logger.isDebugEnabled()){
@@ -139,14 +139,16 @@ public class AssocImpl implements Assoc,Runnable{
 		long oldbucket;
 		
 		if(expanding&&(oldbucket = (hashnum(hv,hashpower-1)))>=expand_bucket){
-			pos = old_hashtable+oldbucket;
+			pos = UnSafeUtil.unsafe.getAddress(old_hashtable+oldbucket);
 		}else{
-			pos = primary_hashtable+(hashnum(hv,hashpower));
+			pos = UnSafeUtil.unsafe.getAddress(primary_hashtable+(hashnum(hv,hashpower)));
 		}
-		
-		while(pos>0&&((nkey!=ItemUtil.getNskey(pos))||(key.compareTo(ItemUtil.getKey(pos))!=0))){
-			pos = ItemUtil.getHNext(pos);
-		}
+	    
+	    while(pos>0 && (nkey != ItemUtil.getNskey(pos)
+	    				||(key.compareTo(ItemUtil.getKey(pos))!=0))){
+	    	pos = ItemUtil.getHNext(pos);
+	    }
+	    
 		return pos;
 	}
 	
@@ -161,7 +163,7 @@ public class AssocImpl implements Assoc,Runnable{
 		}else{
 			hashtableindex = primary_hashtable+(hashnum(hv,hashpower));
 		}
-		ItemUtil.setHNext(it, UnSafeUtil.getLong(hashtableindex));
+		ItemUtil.setHNext(it, UnSafeUtil.unsafe.getAddress(hashtableindex));
 		UnSafeUtil.unsafe.putAddress(hashtableindex, it);
 		
 		if(logger.isDebugEnabled()){
@@ -183,17 +185,20 @@ public class AssocImpl implements Assoc,Runnable{
 
 	@Override
 	public void assoc_delete(String key, int nkey, long hv) {
-		long before = _hashitem_before(key,nkey,hv);  // before is hashtable address
+		long before = _hashitem_before(key,nkey,hv);  // before is item address
 		if(before>0){
 			long nxt;
-			hash_items.incrementAndGet();
+			hash_items.decrementAndGet();
 			/* The DTrace probe cannot be triggered as the last instruction
 	         * due to possible tail-optimization by the compiler
 	         */
-			long item = UnSafeUtil.getLong(before);
-			nxt = ItemUtil.getHNext(item);
-			ItemUtil.setHNext(item,0);
-			UnSafeUtil.unsafe.putLong(before, nxt);
+			nxt = ItemUtil.getHNext(before);
+			ItemUtil.setHNext(before,0);
+			if(nxt!=0){
+				long curnxt = ItemUtil.getHNext(nxt);
+				ItemUtil.setHNext(curnxt, 0);
+				ItemUtil.setHNext(before, curnxt);
+			}
 		}
 		/* Note:  we never actually get here.  the callers don't delete things
 	       they can't find. */
