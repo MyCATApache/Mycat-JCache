@@ -23,6 +23,7 @@ import io.mycat.jcache.util.ItemUtil;
 /**
  * hashtable 作为底层的 提供 find put delect 既可满足需求
  */
+@Deprecated
 public class HashTable {
     private static ByteBuffer cached = ByteBuffer.allocateDirect(Settings.hashsize);
     static Hash_init hash = new HashImpl();

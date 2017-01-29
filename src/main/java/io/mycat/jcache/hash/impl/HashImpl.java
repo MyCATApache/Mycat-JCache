@@ -26,6 +26,7 @@ import io.mycat.jcache.hash.impl.algorithm.Pig_SDBM_hash;
  * @since 2016年12月11日
  *
  */
+@Deprecated
 public class HashImpl implements Hash_init {
 
     private Hash hash;
