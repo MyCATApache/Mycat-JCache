@@ -68,8 +68,6 @@ public class JcacheMain
     	 */
     	ConfigLoader.loadProperties(null);
     	
-    	/* init settings */
-        settings_init();
         /* Run regardless of initializing it later */
         init_lru_crawler();
         init_lru_maintainer();
@@ -153,54 +151,6 @@ public class JcacheMain
     
     private static void init_lru_maintainer(){
     	//TODO
-    }
-    
-    private static void settings_init(){
-    	Settings.useCas = true;
-        Settings.access = "0700";
-        Settings.port = 11211;
-        Settings.udpport = 11211;
-        /* By default this string should be NULL for getaddrinfo() */
-        Settings.inter = null;
-        Settings.maxbytes = 64 * 1024 * 1024; /* default is 64MB */
-        Settings.maxConns = 1024;         /* to limit connections-related memory to about 5MB */
-        Settings.verbose = 2;
-        Settings.oldestLive = 0;
-        Settings.oldestCas = 0;          /* supplements accuracy of oldest_live */
-        Settings.evictToFree = 1;       /* push old items out of cache when memory runs out */
-        Settings.socketPath = null;       /* by default, not using a unix socket */
-        Settings.factor = 1.25;
-        Settings.chunkSize = 48;         /* space for a modest key and value */
-        Settings.numThreads = 4;         /* N workers */
-        Settings.numThreadsPerUdp = 0;
-        Settings.prefixDelimiter = ":";
-        Settings.detailEnabled = false;
-        Settings.reqsPerEvent = 20;
-        Settings.backLog = 1024;
-        Settings.binding_protocol = Protocol.negotiating;
-        Settings.itemSizeMax = 1024 * 1024; /* The famous 1MB upper limit. */
-        Settings.slabPageSize = 1024 * 1024; /* chunks are split from 1MB pages. */
-        Settings.slabChunkSizeMax = Settings.slabPageSize;
-        Settings.sasl = false;
-        Settings.maxConnsFast = false;
-        Settings.lruCrawler = false;
-        Settings.lruCrawlerSleep = 100;
-        Settings.lruCrawlerTocrawl = 0;
-        Settings.lruMaintainerThread = false;
-        Settings.hotLruPct = 32;
-        Settings.warmLruPct = 32;
-        Settings.expireZeroDoesNotEvict = false;
-        Settings.idleTimeout = 0; /* disabled */
-        Settings.hashpower_default = 16; /* Initial power multiplier for the hash table */
-        Settings.hashPowerInit = Settings.hashpower_default;
-        Settings.slabReassign = false;
-        Settings.slabAutoMove = 0;
-        Settings.shutdownCommand = false;
-        Settings.tailRepairTime = 1;
-        Settings.flushEnabled = true;
-        Settings.crawlsPerSleep = 1000;
-        Settings.loggerWatcherBufSize = 1024;
-        Settings.loggerBufSize = 1024;
     }
     
     

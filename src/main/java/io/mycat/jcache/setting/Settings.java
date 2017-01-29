@@ -27,7 +27,7 @@ public class Settings {
 	public static String inter = null;
 	public static long maxbytes = 64*1024*1024; //64M
 	public static int maxConns = 1024;
-	public static short verbose = 1;
+	public static short verbose = 2;
 	public static long oldestLive = 0;
 	public static long oldestCas = 0;
 	public static short evictToFree = 1;  /* push old items out of cache when memory runs out */
