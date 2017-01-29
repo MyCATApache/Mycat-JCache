@@ -55,7 +55,7 @@ public class BinaryFlushCommand implements Command{
 		
 		ByteBuffer extras = readExtras(conn);
 		
-		long exptime = extras.getInt(4);
+		long exptime = extras.capacity()>0?extras.getInt(4):0;
 		
 		exptime = exptime * 1000 + System.currentTimeMillis();
 		

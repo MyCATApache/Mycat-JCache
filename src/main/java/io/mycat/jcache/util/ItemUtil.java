@@ -57,7 +57,7 @@ public class ItemUtil {
 	
 	private static AtomicLong cas_id = new AtomicLong(0);
 	
-	private static long REALTIME_MAXDELTA = 60*60*24*30*1000;
+	private static long REALTIME_MAXDELTA = 60*60*24*30*1000L;
 
 
 	////////////////////////////////// header begin ////////////////////////////////////////////////

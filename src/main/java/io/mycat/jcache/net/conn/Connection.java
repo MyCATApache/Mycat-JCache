@@ -93,7 +93,7 @@ public class Connection implements Closeable, Runnable {
 
     public void register(Selector selector) throws IOException {
         selectionKey = channel.register(selector, SelectionKey.OP_READ);
-        readBuffer = ByteBuffer.allocate(1024*1024*10); // 这里可以修改成从内存模块获取
+        readBuffer = ByteBuffer.allocate((int)(1024*1024*1.2)); // 这里可以修改成从内存模块获取
 //        writeBuffer=ByteBuffer.allocate(1024);
 //        ioHandler = new IOHandler();
         // 绑定会话
