@@ -155,7 +155,7 @@ public class DefaultSlabsImpl implements Slabs {
 		//当前slabclass 中已分配的slab 数，已达到  listsize 上限, 对 slablist 扩容
 		if(SlabClassUtil.getSlabs(p)==SlabClassUtil.getListSize(p)){
 			int list_size = SlabClassUtil.getListSize(p);
-			int new_size = (list_size!=0?list_size*2:16)*UnSafeUtil.addresssize;
+			int new_size = list_size!=0?list_size*2:16;
 			long slablist = SlabClassUtil.getSlabList(p);
 			if(slablist==0){
 				slablist = UnSafeUtil.unsafe.allocateMemory(new_size);
