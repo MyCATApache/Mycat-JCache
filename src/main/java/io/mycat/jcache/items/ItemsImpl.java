@@ -108,6 +108,10 @@ public class ItemsImpl implements Items{
 		if(clsid == 0){
 			return 0;
 		}
+		
+		if(logger.isDebugEnabled()){
+			logger.debug("do_item_alloc key : {} ", key);
+		}
 
 	    /* If no memory is available, attempt a direct LRU juggle/eviction */
 	    /* This is a race in order to simplify lru_pull_tail; in cases where
@@ -198,6 +202,7 @@ public class ItemsImpl implements Items{
 		ItemUtil.setNskey(it,(byte)key.length());
 		ItemUtil.setNbytes(it, nbytes);
 		try {
+			
 			ItemUtil.setKey(key.getBytes(JcacheGlobalConfig.defaultCahrset), it);
 			ItemUtil.setExpTime(it, exptime);
 			byte[] suffixBytes = suffixStr.getBytes(JcacheGlobalConfig.defaultCahrset);
@@ -214,7 +219,15 @@ public class ItemsImpl implements Items{
 //		        chunk->size = chunk->next->size - ((char *)chunk - (char *)it);  TODO
 				ItemChunkUtil.setUsed(chunk, 0);
 			}
+			
+			if(logger.isDebugEnabled()){
+				logger.debug("do_item_alloc setHNext begin : key:{},addr:{} ", key,it);
+			}
 			ItemUtil.setHNext(it, 0);
+			
+			if(logger.isDebugEnabled()){
+				logger.debug("do_item_alloc setHNext begin : key:{},addr:{} ", key,it);
+			}
 		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
 		}
@@ -815,12 +828,21 @@ public class ItemsImpl implements Items{
 			StatsState.curr_items.decrementAndGet();
 			
 			item_stats_sizes_remove(addr);
+			if(logger.isDebugEnabled()){
+				logger.debug("do_item_replace do_item_unlink assoc_delete begin: {}  hv : {}", addr,hv);
+			}
 			JcacheContext.getAssoc()
 			 			 .assoc_delete(ItemUtil.getKey(addr),
 			 					       ItemUtil.getNskey(addr),
 			 					       hv);
+			if(logger.isDebugEnabled()){
+				logger.debug("do_item_replace do_item_unlink item_unlink_q begin: {}  hv : {}", addr,hv);
+			}
 			
 			item_unlink_q(addr);
+			if(logger.isDebugEnabled()){
+				logger.debug("do_item_replace do_item_unlink item_unlink_q end : {}  hv : {}", addr,hv);
+			}
 			do_item_remove(addr);
 		}
 	}
@@ -871,7 +893,13 @@ public class ItemsImpl implements Items{
 		
 		byte itflags = ItemUtil.getItflags(oldAddr);
 		if((itflags&ItemFlags.ITEM_SLABBED.getFlags())!=0)  return false;
+		if(logger.isDebugEnabled()){
+			logger.debug("do_item_replace do_item_unlink begin : {}  newAddr : {}", oldAddr,newAddr);
+		}
 		do_item_unlink(oldAddr,hv);
+		if(logger.isDebugEnabled()){
+			logger.debug("do_item_replace do_item_unlink end : {}  newAddr : {}", oldAddr,newAddr);
+		}
 		return  do_item_link(newAddr, hv);
 	}
 

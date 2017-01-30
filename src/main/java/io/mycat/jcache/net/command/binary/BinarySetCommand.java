@@ -75,9 +75,9 @@ public class BinarySetCommand implements Command{
 			ItemUtil.ITEM_set_cas(addr, readCAS(conn));
 			complete_update_bin(addr,conn);
 						
-			if(logger.isDebugEnabled()){
-				logger.debug(" item data = " +ItemUtil.ItemToString(addr));
-			}
+//			if(logger.isDebugEnabled()){
+//				logger.debug(" item data = " +ItemUtil.ItemToString(addr));
+//			}
 			
 			writeResponse(conn,BinaryProtocol.OPCODE_SET,ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_SUCCESS.getStatus(),1l);
 			

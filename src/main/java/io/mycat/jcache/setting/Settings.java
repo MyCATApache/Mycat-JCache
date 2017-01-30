@@ -10,6 +10,7 @@ package io.mycat.jcache.setting;
 
 import io.mycat.jcache.enums.Protocol;
 import io.mycat.jcache.net.JcacheGlobalConfig;
+import sun.misc.VM;
 
 /**
  * 
@@ -19,13 +20,15 @@ import io.mycat.jcache.net.JcacheGlobalConfig;
  * @since 2016年11月29日 
  *
  */
+@SuppressWarnings("restriction")
 public class Settings {
 	public static boolean useCas = true;
 	public static String access = "0700";
 	public static int port = 11211;
 	public static int udpport = 11211;
 	public static String inter = null;
-	public static long maxbytes = 64*1024*1024; //64M
+	
+	public static long maxbytes = VM.maxDirectMemory()>0?VM.maxDirectMemory():64*1024*1024; //64M
 	public static int maxConns = 1024;
 	public static short verbose = 2;
 	public static long oldestLive = 0;

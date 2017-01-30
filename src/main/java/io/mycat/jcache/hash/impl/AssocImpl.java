@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.mycat.jcache.context.JcacheContext;
+import io.mycat.jcache.context.StatsState;
 import io.mycat.jcache.enums.PAUSE_THREAD_TYPES;
 import io.mycat.jcache.hash.Assoc;
 import io.mycat.jcache.setting.Settings;
@@ -119,7 +120,7 @@ public class AssocImpl implements Assoc,Runnable{
 		
 		long ret = 0;
 		int depth = 0;
-		while(it>0){
+		while(it>0){  //一个桶中  多个item时, 遍历链表
 			if((nkey==ItemUtil.getNskey(it))&&
 					(key.compareTo(ItemUtil.getKey(it))==0)){
 				ret = it;
@@ -196,8 +197,10 @@ public class AssocImpl implements Assoc,Runnable{
 			ItemUtil.setHNext(before,0);
 			if(nxt!=0){
 				long curnxt = ItemUtil.getHNext(nxt);
-				ItemUtil.setHNext(curnxt, 0);
-				ItemUtil.setHNext(before, curnxt);
+				if(curnxt!=0){
+					ItemUtil.setHNext(curnxt, 0);
+					ItemUtil.setHNext(before, curnxt);
+				}
 			}
 		}
 		/* Note:  we never actually get here.  the callers don't delete things
@@ -234,7 +237,9 @@ public class AssocImpl implements Assoc,Runnable{
 			hashpower++;
 			expanding = true;
 			expand_bucket = 0;
-			//TODO stats_state
+			StatsState.hash_power_level.set(hashpower);
+			StatsState.hash_bytes.addAndGet((JcacheContext.hashsize(hashpower)*UnSafeUtil.addresssize));
+			while(StatsState.hash_is_expanding.compareAndSet(false, true)){};
 		}else{
 			primary_hashtable = old_hashtable;
 			/* Bad news, but we can keep running. */
@@ -246,6 +251,9 @@ public class AssocImpl implements Assoc,Runnable{
 		assoc_maintenance_thread();
 	}
 	
+	/**
+	 * hashtable 扩容线程,涉及到 item hash 值的重新计算 
+	 */
 	private void assoc_maintenance_thread(){
 		maintenance_lock.lock();
 		try {
@@ -271,9 +279,9 @@ public class AssocImpl implements Assoc,Runnable{
 									it = next){
 									next = ItemUtil.getHNext(it);
 									long hash = JcacheContext.getHash().hash(ItemUtil.getKey(it), ItemUtil.getNskey(it));
-									bucket = hash&JcacheContext.hashmask(hashpower);
+									bucket = hash&JcacheContext.hashmask(hashpower);  //计算新的桶
 									long bucketaddr = primary_hashtable+(bucket*UnSafeUtil.addresssize);
-									ItemUtil.setHNext(it, UnSafeUtil.getLong(bucketaddr));
+									ItemUtil.setHNext(it, UnSafeUtil.unsafe.getAddress(bucketaddr));
 									UnSafeUtil.unsafe.putAddress(bucketaddr, it);
 								}
 								
@@ -283,7 +291,8 @@ public class AssocImpl implements Assoc,Runnable{
 								if(expand_bucket == JcacheContext.hashsize(hashpower - 1)){
 									expanding = false;
 									UnSafeUtil.unsafe.freeMemory(old_hashtable);
-									//TODO stats_state
+									StatsState.hash_bytes.addAndGet(-(JcacheContext.hashsize(hashpower-1)*UnSafeUtil.addresssize));
+									while(StatsState.hash_is_expanding.compareAndSet(true, false)){};
 									if(Settings.verbose > 1){
 										if(logger.isErrorEnabled()){
 											logger.error("Hash table expansion done");
@@ -308,18 +317,18 @@ public class AssocImpl implements Assoc,Runnable{
 						maintenance_cond.await();
 					} catch (InterruptedException e) {
 					}
+					
+					/* assoc_expand() swaps out the hash table entirely, so we need
+		             * all threads to not hold any references related to the hash
+		             * table while this happens.
+		             * This is instead of a more complex, possibly slower algorithm to
+		             * allow dynamic hash table expansion without causing significant
+		             * wait times.
+		             */
+					pause_threads(PAUSE_THREAD_TYPES.PAUSE_ALL_THREADS);
+					assoc_expand();
+					pause_threads(PAUSE_THREAD_TYPES.RESUME_ALL_THREADS);
 				}
-				/* assoc_expand() swaps out the hash table entirely, so we need
-	             * all threads to not hold any references related to the hash
-	             * table while this happens.
-	             * This is instead of a more complex, possibly slower algorithm to
-	             * allow dynamic hash table expansion without causing significant
-	             * wait times.
-	             */
-				pause_threads(PAUSE_THREAD_TYPES.PAUSE_ALL_THREADS);
-				assoc_expand();
-				pause_threads(PAUSE_THREAD_TYPES.RESUME_ALL_THREADS);
-				
 			}
 		} finally {
 			maintenance_lock.unlock();
