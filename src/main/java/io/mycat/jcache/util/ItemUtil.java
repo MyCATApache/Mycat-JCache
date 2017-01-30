@@ -30,7 +30,7 @@ public class ItemUtil {
 	public static String ItemToString(long addr){
 		return "{prev =" + getPrev(addr)+",next = "+getNext(addr)+",hnext = "+getHNext(addr)+", flushtime = "
 			   + getTime(addr)+", exptime = "+getExpTime(addr)+", nbytes = "+getNbytes(addr)+", refcount = "
-//			   + getRefCount(addr)
+			   + getRefCount(addr)
 			   +", slabsclsid = " + getSlabsClsid(addr)+", itlags = "
 			   + getItflags(addr)+",nsuffix = " + getNsuffix(addr)+",nskey = " + getNskey(addr)+", key = "
 			   + getKey(addr)+",suffix = " + new String(getSuffix(addr))+",value = " + new String(getValue(addr)) +"}";

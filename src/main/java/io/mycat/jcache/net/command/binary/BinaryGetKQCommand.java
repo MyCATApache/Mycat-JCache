@@ -6,10 +6,12 @@ import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.mycat.jcache.context.JcacheContext;
 import io.mycat.jcache.net.command.Command;
 import io.mycat.jcache.net.conn.Connection;
 import io.mycat.jcache.net.conn.handler.BinaryProtocol;
 import io.mycat.jcache.net.conn.handler.BinaryResponseHeader;
+import io.mycat.jcache.util.ItemUtil;
 
 
 /**
@@ -43,20 +45,30 @@ public class BinaryGetKQCommand implements Command{
 		int extlen  = conn.getBinaryRequestHeader().getExtlen();
 		
 		if (extlen == 0 && bodylen == keylen && keylen > 0) {
-			ByteBuffer key = readkey(conn);
-			String keystr = new String(cs.decode(key).array());
-			logger.info("execute command getkq key {}",keystr);
-			byte[] value = "This is a test String".getBytes("UTF-8");
-			int flags = 0x00000020;
-			byte[] extras = new byte[4];
-			extras[0] = (byte) (flags <<24  &0xff);
-			extras[1] = (byte) (flags <<16  &0xff);
-			extras[2] = (byte) (flags <<8   &0xff);
-			extras[3] = (byte) (flags       &0xff);
-			BinaryResponseHeader header = buildHeader(conn.getBinaryRequestHeader(),BinaryProtocol.OPCODE_GETKQ,keystr.getBytes(),value,extras,1l);
-			writeResponse(conn,header,extras,keystr.getBytes(),value);
+			try {
+				ByteBuffer key = readkey(conn);
+				String keystr = new String(cs.decode(key).array());
+				logger.info("execute command getkq key {}",keystr);
+				long addr = JcacheContext.getItemsAccessManager().item_get(keystr,keylen, conn);
+				if(addr==0){
+					writeResponse(conn, BinaryProtocol.OPCODE_GETKQ, ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_KEY_ENOENT.getStatus(), 0L);
+				}else{
+					byte[] value = ItemUtil.getValue(addr);
+					int flags = ItemUtil.ITEM_suffix_flags(addr);
+					byte[] extras = new byte[4];
+					extras[0] = (byte) (flags <<24  &0xff);
+					extras[1] = (byte) (flags <<16  &0xff);
+					extras[2] = (byte) (flags <<8   &0xff);
+					extras[3] = (byte) (flags       &0xff);
+					BinaryResponseHeader header = buildHeader(conn.getBinaryRequestHeader(),BinaryProtocol.OPCODE_GETKQ,keystr.getBytes(),value,extras,ItemUtil.getCAS(addr));
+					writeResponse(conn,header,extras,keystr.getBytes(),value);
+				}		
+			} catch (Exception e) {
+				logger.error(" execute command getkq error ", e);
+				throw e;
+			}
 		} else {
-			writeResponse(conn, BinaryProtocol.OPCODE_GETQ, ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_EINVAL.getStatus(), 0L);
+			writeResponse(conn, BinaryProtocol.OPCODE_GETKQ, ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_EINVAL.getStatus(), 0L);
 		}
 	}
 }

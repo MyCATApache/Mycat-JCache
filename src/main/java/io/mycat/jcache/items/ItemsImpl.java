@@ -111,8 +111,9 @@ public class ItemsImpl implements Items{
 		}
 		
 //		JcacheContext.getSlabPool().
-		
-		logger.debug(" before "+SlabClassUtil.SlabClassToString(JcacheContext.getSlabPool().getSlabClass(clsid)));
+		if(Settings.verbose >= 2){
+			logger.debug(" before "+SlabClassUtil.SlabClassToString(JcacheContext.getSlabPool().getSlabClass(clsid)));
+		}
 
 	    /* If no memory is available, attempt a direct LRU juggle/eviction */
 	    /* This is a race in order to simplify lru_pull_tail; in cases where
@@ -142,7 +143,7 @@ public class ItemsImpl implements Items{
 					total_bytes -= noexp_lru_size(clsid); 
 				}
 				
-				if(logger.isDebugEnabled()){
+				if(Settings.verbose >= 2&&logger.isDebugEnabled()){
 					logger.debug(" after "+SlabClassUtil.SlabClassToString(JcacheContext.getSlabPool().getSlabClass(clsid)));
 					logger.debug("do_item_alloc slabs_alloc key : {},addr : {}  ", key,it);
 				}
@@ -226,14 +227,8 @@ public class ItemsImpl implements Items{
 				ItemChunkUtil.setUsed(chunk, 0);
 			}
 			
-			if(logger.isDebugEnabled()){
-				logger.debug("do_item_alloc setHNext begin : key:{},addr:{} ", key,it);
-			}
 			ItemUtil.setHNext(it, 0);
 			
-			if(logger.isDebugEnabled()){
-				logger.debug("do_item_alloc setHNext end : key:{},addr:{} ", key,it);
-			}
 		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
 		}
@@ -243,7 +238,7 @@ public class ItemsImpl implements Items{
 	@Override
 	public long do_item_get(String key,int nkey,long hv,Connection conn){
 		long addr = JcacheContext.getAssoc().assoc_find(key, nkey, hv);
-		if(logger.isDebugEnabled()){
+		if(Settings.verbose >= 2&& logger.isDebugEnabled()){
 			logger.debug("do_item_get key : {}  addr : {}", key,addr);
 		}
 		

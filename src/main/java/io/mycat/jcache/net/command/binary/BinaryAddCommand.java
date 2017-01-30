@@ -29,11 +29,6 @@ public class BinaryAddCommand implements Command {
         }
 
         String keys = new String(cs.decode(key).array());
-        //Add MUST fail if the item already exist.
-//        if(ReadWritePool.get(new String[]{keys}).length>0) {
-//            writeResponse(conn,BinaryProtocol.OPCODE_ADD,ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_NOT_STORED.getStatus(),0l);
-//        }
-        //extras
         ByteBuffer extras = readExtras(conn);
         extras.limit(extras.position()+4);
         ByteBuffer flags = extras.slice();
@@ -44,11 +39,6 @@ public class BinaryAddCommand implements Command {
         byte[] data = new byte[value.remaining()];
         value.get(data);
 
-        System.out.println("执行add 命令   key: "+new String(cs.decode (key).array()));
-        System.out.println("执行add 命令   value: "+new String(cs.decode (value).array()));
-
-//        int result = ReadWritePool.add(keys,flags.getInt(),data.length,expiry.getInt(),data);
-//        System.out.println("add command result : "+result);
         writeResponse(conn,BinaryProtocol.OPCODE_ADD,ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_SUCCESS.getStatus(),1l);
     }
 }

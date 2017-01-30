@@ -60,7 +60,7 @@ public class BinaryGetCommand implements Command{
 					extras[1] = (byte) (flags <<16  &0xff);
 					extras[2] = (byte) (flags <<8   &0xff);
 					extras[3] = (byte) (flags       &0xff);
-					BinaryResponseHeader header = buildHeader(conn.getBinaryRequestHeader(),BinaryProtocol.OPCODE_GET,null,value,extras,1l);
+					BinaryResponseHeader header = buildHeader(conn.getBinaryRequestHeader(),BinaryProtocol.OPCODE_GET,null,value,extras,ItemUtil.getCAS(addr));
 					writeResponse(conn,header,extras,null,new String(value).getBytes());
 				}		
 			} catch (Exception e) {
