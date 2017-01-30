@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import io.mycat.jcache.net.command.Command;
 import io.mycat.jcache.net.conn.Connection;
+import io.mycat.jcache.util.ItemUtil;
 
 /**
  * Created by qd on 2016/12/2.
@@ -27,8 +28,17 @@ public class BinaryDeleteCommand implements  Command {
             writeResponse(conn, ProtocolCommand.PROTOCOL_BINARY_CMD_DELETE.getByte(), ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_KEY_ENOENT.getStatus(),0l);
         }
         String key = new String(cs.decode(keyBuf).array());
-        Long addr =  JcacheContext.getItemsAccessManager().item_get(key,keylen,conn);
-        JcacheContext.getItemsAccessManager().item_remove(addr);
-        writeResponse(conn,ProtocolCommand.PROTOCOL_BINARY_CMD_DELETE.getByte(),ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_SUCCESS.getStatus(),1l);
+        long addr =  JcacheContext.getItemsAccessManager().item_get(key,keylen,conn);
+        if(addr>0){
+        	long cas = readCAS(conn);
+        	if(cas==0||cas==ItemUtil.ITEM_get_cas(addr)){
+        		JcacheContext.getItemsAccessManager().item_unlink(addr);
+        		writeResponse(conn,ProtocolCommand.PROTOCOL_BINARY_CMD_DELETE.getByte(),ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_SUCCESS.getStatus(),cas);
+        	}else{
+        		writeResponse(conn, ProtocolCommand.PROTOCOL_BINARY_CMD_DELETE.getByte(), ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_KEY_EEXISTS.getStatus(),0l);
+        	}
+        }else{
+        	writeResponse(conn, ProtocolCommand.PROTOCOL_BINARY_CMD_DELETE.getByte(), ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_KEY_ENOENT.getStatus(),0l);
+        }
     }
 }

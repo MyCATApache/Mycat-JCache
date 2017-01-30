@@ -186,21 +186,32 @@ public class AssocImpl implements Assoc,Runnable{
 
 	@Override
 	public void assoc_delete(String key, int nkey, long hv) {
-		long before = _hashitem_before(key,nkey,hv);  // before is item address
+		long before = _hashitem_before(key,nkey,hv);  // before is item address,当前桶内如果只有一个item ,before 返回的是这个item的addr
 		if(before>0){
 			long nxt;
 			hash_items.decrementAndGet();
 			/* The DTrace probe cannot be triggered as the last instruction
 	         * due to possible tail-optimization by the compiler
+	         * 
 	         */
 			nxt = ItemUtil.getHNext(before);
 			ItemUtil.setHNext(before,0);
-			if(nxt!=0){
+			if(nxt!=0){ //从hash 链表中删除 当前item
 				long curnxt = ItemUtil.getHNext(nxt);
 				if(curnxt!=0){
 					ItemUtil.setHNext(curnxt, 0);
 					ItemUtil.setHNext(before, curnxt);
 				}
+			}else{  //桶内只有一个元素时，就是当前元素,从桶中删除 当前元素
+				long pos;
+				long oldbucket;
+				
+				if(expanding&&(oldbucket = (hashnum(hv,hashpower-1)))>=expand_bucket){
+					pos = old_hashtable+oldbucket;
+				}else{
+					pos = primary_hashtable+(hashnum(hv,hashpower));
+				}
+				UnSafeUtil.unsafe.putAddress(pos, 0);
 			}
 		}
 		/* Note:  we never actually get here.  the callers don't delete things

@@ -823,7 +823,7 @@ public class ItemsImpl implements Items{
 	public void do_item_unlink(long addr,long hv){
 		byte flags = ItemUtil.getItflags(addr);
 		if((flags&ItemFlags.ITEM_LINKED.getFlags())!=0){
-			ItemUtil.setItflags(addr, (byte)~ItemFlags.ITEM_LINKED.getFlags());
+			ItemUtil.setItflags(addr, (byte)(flags&~ItemFlags.ITEM_LINKED.getFlags()));
 
 			StatsState.curr_bytes.addAndGet(-ItemUtil.ITEM_ntotal(addr));
 			StatsState.curr_items.decrementAndGet();
