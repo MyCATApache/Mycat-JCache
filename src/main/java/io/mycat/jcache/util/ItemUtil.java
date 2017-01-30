@@ -30,7 +30,8 @@ public class ItemUtil {
 	public static String ItemToString(long addr){
 		return "{prev =" + getPrev(addr)+",next = "+getNext(addr)+",hnext = "+getHNext(addr)+", flushtime = "
 			   + getTime(addr)+", exptime = "+getExpTime(addr)+", nbytes = "+getNbytes(addr)+", refcount = "
-			   + getRefCount(addr)+", slabsclsid = " + getSlabsClsid(addr)+", itlags = "
+//			   + getRefCount(addr)
+			   +", slabsclsid = " + getSlabsClsid(addr)+", itlags = "
 			   + getItflags(addr)+",nsuffix = " + getNsuffix(addr)+",nskey = " + getNskey(addr)+", key = "
 			   + getKey(addr)+",suffix = " + new String(getSuffix(addr))+",value = " + new String(getValue(addr)) +"}";
 	}
@@ -127,6 +128,8 @@ public class ItemUtil {
 	 */
 	public static long getHNext(long addr){
 		//return UnSafeUtil.getByte(addr+2);
+//		throw new RuntimeException();
+//		logger.debug("addr=========== : {}",addr);  TODO  test  为什么一直在执行
 		return UnSafeUtil.getLongVolatile(addr+HNEXT);
 	}
 	// fixed setHNext(long addr, long next)
@@ -340,7 +343,7 @@ public class ItemUtil {
 	 */
 	public static void setKey(byte[] key_bytes, long addr){
 		if(key_bytes.length!=(getNskey(addr)&0xff)){
-			logger.error("Error, NSkey's values != key_bytes.length . key is {},nskey value is {}, key_bytes.legth is {}",getKey(addr),getNskey(addr),key_bytes.length);
+			logger.error("Error, NSkey's values != key_bytes.length . key is {},nskey value is {}, key_bytes.legth is {}, addr is {}",getKey(addr),getNskey(addr),key_bytes.length,addr);
 			throw new RuntimeException("Error, NSkey's values != key_bytes.length");
 		}
 		UnSafeUtil.setBytes(ITEM_key(addr), key_bytes, 0, key_bytes.length);

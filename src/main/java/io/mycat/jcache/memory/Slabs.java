@@ -29,6 +29,13 @@ public interface Slabs {
 	 */
 	public int slabs_clsid(int size);
 	
+	/**
+	 * 获取 slabclass 的内存首地址
+	 * @param id
+	 * @return
+	 */
+	public long getSlabClass(int id);
+	
 	/** Allocate object of given length. 0 on error 
 	 * @param size
 	 * @param id

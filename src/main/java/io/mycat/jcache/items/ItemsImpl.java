@@ -22,6 +22,7 @@ import io.mycat.jcache.setting.Settings;
 import io.mycat.jcache.util.ItemChunkUtil;
 import io.mycat.jcache.util.ItemStatsUtil;
 import io.mycat.jcache.util.ItemUtil;
+import io.mycat.jcache.util.SlabClassUtil;
 import io.mycat.jcache.util.UnSafeUtil;
 
 /**
@@ -109,9 +110,9 @@ public class ItemsImpl implements Items{
 			return 0;
 		}
 		
-		if(logger.isDebugEnabled()){
-			logger.debug("do_item_alloc key : {} ", key);
-		}
+//		JcacheContext.getSlabPool().
+		
+		logger.debug(" before "+SlabClassUtil.SlabClassToString(JcacheContext.getSlabPool().getSlabClass(clsid)));
 
 	    /* If no memory is available, attempt a direct LRU juggle/eviction */
 	    /* This is a race in order to simplify lru_pull_tail; in cases where
@@ -140,6 +141,11 @@ public class ItemsImpl implements Items{
 				if(Settings.expireZeroDoesNotEvict){
 					total_bytes -= noexp_lru_size(clsid); 
 				}
+				
+				if(logger.isDebugEnabled()){
+					logger.debug(" after "+SlabClassUtil.SlabClassToString(JcacheContext.getSlabPool().getSlabClass(clsid)));
+					logger.debug("do_item_alloc slabs_alloc key : {},addr : {}  ", key,it);
+				}
 
 				if(it==0){
 					if(Settings.lruMaintainerThread){
@@ -164,7 +170,7 @@ public class ItemsImpl implements Items{
 		
 		if(i>0){
 			AtomicBoolean lru_lock = JcacheContext.getLRU_Lock(clsid);
-			while(lru_lock.compareAndSet(false, true)){}
+			while(!lru_lock.compareAndSet(false, true)){}
 			try {
 				itemstats[clsid][ItemStatsUtil.direct_reclaims] +=i;
 			} finally {
@@ -174,7 +180,7 @@ public class ItemsImpl implements Items{
 		
 		if(it==0){
 			AtomicBoolean lru_lock = JcacheContext.getLRU_Lock(clsid);
-			while(lru_lock.compareAndSet(false, true)){}
+			while(!lru_lock.compareAndSet(false, true)){}
 			try {
 				itemstats[clsid][ItemStatsUtil.outofmemory]++;
 			} finally {
@@ -226,7 +232,7 @@ public class ItemsImpl implements Items{
 			ItemUtil.setHNext(it, 0);
 			
 			if(logger.isDebugEnabled()){
-				logger.debug("do_item_alloc setHNext begin : key:{},addr:{} ", key,it);
+				logger.debug("do_item_alloc setHNext end : key:{},addr:{} ", key,it);
 			}
 		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
@@ -305,7 +311,7 @@ public class ItemsImpl implements Items{
 	public void item_stats_reset(){
 		IntStream.range(0, LARGEST_ID).forEach(f->{
 			AtomicBoolean lru_locks = JcacheContext.getLRU_Lock(f);
-			while(lru_locks.compareAndSet(false, true)){}
+			while(!lru_locks.compareAndSet(false, true)){}
 			try {
 				long[] itemstat = itemstats[f];
 				for(int i = 0;i<itemstat.length;i++){
@@ -339,7 +345,7 @@ public class ItemsImpl implements Items{
 	private void item_link_q(long addr){
 		int clsid = ItemUtil.getSlabsClsid(addr);
 		AtomicBoolean lru_locks = JcacheContext.getLRU_Lock(clsid);
-		while(lru_locks.compareAndSet(false, true)){}
+		while(!lru_locks.compareAndSet(false, true)){}
 		try {
 			do_item_link_q(addr);
 		} finally {
@@ -589,7 +595,7 @@ public class ItemsImpl implements Items{
 		
 		try {
 			AtomicBoolean lru_locks = JcacheContext.getLRU_Lock(id);
-			while(lru_locks.compareAndSet(false, true)){}
+			while(!lru_locks.compareAndSet(false, true)){}
 			search = tails[id];
 			try {
 				/* We walk up *only* for locked items, and if bottom is expired. */
@@ -788,7 +794,7 @@ public class ItemsImpl implements Items{
 	private void item_unlink_q(long addr) {
 		int clsid = ItemUtil.getSlabsClsid(addr);
 		AtomicBoolean lru_locks = JcacheContext.getLRU_Lock(clsid);
-		while(lru_locks.compareAndSet(false, true)){}
+		while(!lru_locks.compareAndSet(false, true)){}
 		try {
 			do_item_unlink_q(addr);
 		} finally {
@@ -877,7 +883,7 @@ public class ItemsImpl implements Items{
 	@Override
 	public boolean item_stats_sizes_status(){
 		boolean ret = false;
-		while(stats_sizes_lock.compareAndSet(false, true)){}
+		while(!stats_sizes_lock.compareAndSet(false, true)){}
 		try {
 			if(stats_sizes_hist!=0){
 				ret = true;

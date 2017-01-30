@@ -11,6 +11,7 @@ import io.mycat.jcache.setting.Settings;
  * @author liyanjun
  * size,perslab,slots,sl_curr,slabs,slab_list,list_size,requested
  * 0    4       8     16      20    24        32        36       | 44
+ * 
  */
 public class SlabClassUtil {
 	
@@ -37,6 +38,16 @@ public class SlabClassUtil {
 	private static final byte list_size = 32;
 	/* The number of requested bytes */
 	private static final byte requested = 36;
+	
+	/**
+	 * 测试使用
+	 * 输出当前slabclass 使用状况
+	 * @param addr
+	 */
+	public static String SlabClassToString(long addr){
+		return "{size="+getSize(addr)+",perslab = "+getPerslab(addr)+",sl_curr ="+getSlCurr(addr)+","
+				+"slabs= "+ getSlabs(addr) + ",list_size = "+getListSize(addr)+"}";
+	}
 	
 	public static int getNtotal() {
 		return ntotal;

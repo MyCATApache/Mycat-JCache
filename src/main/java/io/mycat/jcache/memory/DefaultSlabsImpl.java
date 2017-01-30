@@ -33,8 +33,8 @@ public class DefaultSlabsImpl implements Slabs {
 	/**
 	 * Access to the slab allocator is protected by this lock
 	 */
-	private static AtomicBoolean slabs_lock = new AtomicBoolean(false);
-	private static AtomicBoolean slabs_rebalance_lock = new AtomicBoolean(false);
+	private volatile static AtomicBoolean slabs_lock = new AtomicBoolean(false);
+	private volatile static AtomicBoolean slabs_rebalance_lock = new AtomicBoolean(false);
 	
 	/**
 	 * 为  slabclass 分配一个新的slab
@@ -270,7 +270,8 @@ public class DefaultSlabsImpl implements Slabs {
 		}
 	}
 	
-	private long getSlabClass(int id){
+	@Override
+	public long getSlabClass(int id){
 		return slabclass + id*SlabClassUtil.getNtotal();
 	}
 	
@@ -369,7 +370,7 @@ public class DefaultSlabsImpl implements Slabs {
 	@Override
 	public long slabs_alloc(int size, int id, long total_bytes, int flags) {
 		long ret = 0;
-		while(slabs_lock.compareAndSet(false, true)){}
+		while(!slabs_lock.compareAndSet(false, true)){}
 		try {
 			ret = do_slabs_alloc(size,id,total_bytes,flags);
 		} finally {
@@ -442,7 +443,7 @@ public class DefaultSlabsImpl implements Slabs {
 
 	@Override
 	public void slabs_free(long ptr, int size, int id) {
-		while(slabs_lock.compareAndSet(false, true)){}
+		while(!slabs_lock.compareAndSet(false, true)){}
 		try {
 			do_slabs_free(ptr,size,id);
 		} finally {

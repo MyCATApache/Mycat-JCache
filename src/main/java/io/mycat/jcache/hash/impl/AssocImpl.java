@@ -171,7 +171,7 @@ public class AssocImpl implements Assoc,Runnable{
 			logger.debug("assoc insert key = {},hashindex = {} , hashaddr = {}",ItemUtil.getKey(it),hashtableindex,it);
 		}
 		
-		while(hash_items_counter_lock.compareAndSet(false, true)){}
+		while(!hash_items_counter_lock.compareAndSet(false, true)){}
 		try{
 			hash_items.incrementAndGet();
 		    if (! expanding && hash_items.get() > ((JcacheContext.hashsize(hashpower) * 3) / 2)) {
@@ -239,7 +239,7 @@ public class AssocImpl implements Assoc,Runnable{
 			expand_bucket = 0;
 			StatsState.hash_power_level.set(hashpower);
 			StatsState.hash_bytes.addAndGet((JcacheContext.hashsize(hashpower)*UnSafeUtil.addresssize));
-			while(StatsState.hash_is_expanding.compareAndSet(false, true)){};
+			while(!StatsState.hash_is_expanding.compareAndSet(false, true)){};
 		}else{
 			primary_hashtable = old_hashtable;
 			/* Bad news, but we can keep running. */
@@ -292,7 +292,7 @@ public class AssocImpl implements Assoc,Runnable{
 									expanding = false;
 									UnSafeUtil.unsafe.freeMemory(old_hashtable);
 									StatsState.hash_bytes.addAndGet(-(JcacheContext.hashsize(hashpower-1)*UnSafeUtil.addresssize));
-									while(StatsState.hash_is_expanding.compareAndSet(true, false)){};
+									while(!StatsState.hash_is_expanding.compareAndSet(true, false)){};
 									if(Settings.verbose > 1){
 										if(logger.isErrorEnabled()){
 											logger.error("Hash table expansion done");
