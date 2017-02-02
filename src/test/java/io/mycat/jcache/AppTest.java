@@ -1,9 +1,7 @@
 package io.mycat.jcache;
 
 import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 
 import org.junit.BeforeClass;
@@ -12,7 +10,6 @@ import org.junit.Test;
 import com.whalin.MemCached.MemCachedClient;
 import com.whalin.MemCached.SockIOPool;
 
-import io.mycat.jcache.net.JcacheMain;
 import junit.framework.Assert;
 
 /**
@@ -73,12 +70,13 @@ public class AppTest {
 		String key = "foo0";
 		boolean result;
 		int j;
-		for(j=0;j<10;j++){
+		for(j=0;j<1;j++){
 			result = mcc.set("foo"+j, value);
 	        System.out.println(result+":"+j);
 	        Assert.assertEquals(result, true);
 		}
-		
+		long castToken = mcc.gets(key).casUnique;
+		Assert.assertEquals(mcc.cas(key, value,castToken), true);
 		Assert.assertEquals(mcc.get(key), value);
 		Assert.assertEquals(mcc.append(key, "234"), true);
 		Assert.assertEquals(mcc.prepend(key, "34"), true);
@@ -94,6 +92,15 @@ public class AppTest {
 		Assert.assertNull(mcc.get(key));
 		Assert.assertEquals(mcc.keyExists(key), false);
 		
+		Assert.assertEquals(mcc.set(key, value), true);
+		Assert.assertEquals(mcc.get(key), value);
+		try {
+			Thread.sleep(1200);
+		} catch (InterruptedException e) {
+		}
+		Assert.assertEquals(mcc.flushAll(), true);  //1秒以内的数据不清除
+		Assert.assertNull(mcc.get(key));
+		Assert.assertEquals(mcc.keyExists(key), false);
 	}
 	
 	@Test

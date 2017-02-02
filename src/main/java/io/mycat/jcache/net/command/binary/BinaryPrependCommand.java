@@ -5,7 +5,7 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.mycat.jcache.net.command.Command;
+import io.mycat.jcache.net.command.BinaryCommand;
 import io.mycat.jcache.net.conn.Connection;
 
 /**
@@ -25,7 +25,7 @@ These commands will either append or prepend the specified value to the requeste
  * @author liyanjun
  *
  */
-public class BinaryPrependCommand implements Command{
+public class BinaryPrependCommand implements BinaryCommand{
 
 	private static final Logger logger = LoggerFactory.getLogger(BinaryPrependCommand.class);
 

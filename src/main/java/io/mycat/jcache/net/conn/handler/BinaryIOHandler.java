@@ -7,6 +7,7 @@ import io.mycat.jcache.enums.conn.CONN_STATES;
 import io.mycat.jcache.enums.protocol.binary.BinaryProtocol;
 import io.mycat.jcache.enums.protocol.binary.ProtocolResponseStatus;
 import io.mycat.jcache.net.JcacheGlobalConfig;
+import io.mycat.jcache.net.command.BinaryCommand;
 import io.mycat.jcache.net.command.Command;
 import io.mycat.jcache.net.command.CommandContext;
 import io.mycat.jcache.net.command.CommandType;
@@ -49,7 +50,7 @@ public class BinaryIOHandler implements IOHandler{
     		int bodylen = conn.getBinaryRequestHeader().getBodylen();
     		int extlen  = conn.getBinaryRequestHeader().getExtlen();
     	    if (keylen > bodylen || keylen + extlen > bodylen) {
-    	        Command.writeResponseError(conn, 
+    	    	BinaryCommand.writeResponseError(conn, 
     	        						   conn.getBinaryRequestHeader().getOpcode(),
     	        						   ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_UNKNOWN_COMMAND.getStatus());
     	        conn.setWrite_and_go(CONN_STATES.conn_closing);
@@ -65,7 +66,7 @@ public class BinaryIOHandler implements IOHandler{
     	    conn.setNoreply(true);
     	    
     	    if(keylen > JcacheGlobalConfig.KEY_MAX_LENGTH) {
-    	    	Command.writeResponseError(conn, 
+    	    	BinaryCommand.writeResponseError(conn, 
 						   conn.getBinaryRequestHeader().getOpcode(),
 						   ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_EINVAL.getStatus());
     			return;
@@ -76,18 +77,17 @@ public class BinaryIOHandler implements IOHandler{
     		
     		if(command==null){
     			conn.setNoreply(false);
-    			Command.writeResponseError(conn, 
+    			BinaryCommand.writeResponseError(conn, 
 						   conn.getBinaryRequestHeader().getOpcode(),
 						   ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_UNKNOWN_COMMAND.getStatus());
     			conn.setWrite_and_go(CONN_STATES.conn_closing);
     			return;
     		}else{
-    			
+    			conn.setCurCommand(CommandType.getType(opcode));
+        		command.execute(conn);
+        		offset += length;
+        		readbuffer.position(offset);
     		}
-    		conn.setCurCommand(CommandType.getType(opcode));
-    		command.execute(conn);
-    		offset += length;
-    		readbuffer.position(offset);
     	}
     	readbuffer.clear();
 	}

@@ -6,9 +6,8 @@ import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.mycat.jcache.net.command.Command;
+import io.mycat.jcache.net.command.BinaryCommand;
 import io.mycat.jcache.net.conn.Connection;
-import io.mycat.jcache.net.conn.handler.BinaryResponseHeader;
 
 
 /**
@@ -31,7 +30,7 @@ import io.mycat.jcache.net.conn.handler.BinaryResponseHeader;
  * @author liyanjun
  *
  */
-public class BinaryStatCommand implements Command{
+public class BinaryStatCommand implements BinaryCommand{
 	
 	private static final Logger logger = LoggerFactory.getLogger(BinaryStatCommand.class);
 		

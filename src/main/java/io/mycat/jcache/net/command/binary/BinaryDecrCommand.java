@@ -5,7 +5,7 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.mycat.jcache.net.command.Command;
+import io.mycat.jcache.net.command.BinaryCommand;
 import io.mycat.jcache.net.conn.Connection;
 
 /**
@@ -23,7 +23,7 @@ import io.mycat.jcache.net.conn.Connection;
  * @author liyanjun
  *
  */
-public class BinaryDecrCommand implements Command{
+public class BinaryDecrCommand implements BinaryCommand{
 	
 	private static final Logger logger = LoggerFactory.getLogger(BinaryDecrCommand.class);
 		

@@ -5,11 +5,10 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.mycat.jcache.enums.protocol.binary.BinaryProtocol;
 import io.mycat.jcache.enums.protocol.binary.ProtocolBinaryCommand;
 import io.mycat.jcache.enums.protocol.binary.ProtocolResponseStatus;
 import io.mycat.jcache.net.JcacheGlobalConfig;
-import io.mycat.jcache.net.command.Command;
+import io.mycat.jcache.net.command.BinaryCommand;
 import io.mycat.jcache.net.conn.Connection;
 import io.mycat.jcache.net.conn.handler.BinaryResponseHeader;
 
@@ -33,7 +32,7 @@ import io.mycat.jcache.net.conn.handler.BinaryResponseHeader;
  * @author liyanjun
  *
  */
-public class BinaryVersionCommand implements Command{
+public class BinaryVersionCommand implements BinaryCommand{
 	
 	private static final Logger logger = LoggerFactory.getLogger(BinaryVersionCommand.class);
 	

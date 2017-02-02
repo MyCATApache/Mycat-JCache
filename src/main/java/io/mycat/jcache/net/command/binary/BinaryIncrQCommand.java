@@ -5,7 +5,7 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.mycat.jcache.net.command.Command;
+import io.mycat.jcache.net.command.BinaryCommand;
 import io.mycat.jcache.net.conn.Connection;
 
 
@@ -26,7 +26,7 @@ import io.mycat.jcache.net.conn.Connection;
  * @author liyanjun
  *
  */
-public class BinaryIncrQCommand implements Command{
+public class BinaryIncrQCommand implements BinaryCommand{
 	
 	private static final Logger logger = LoggerFactory.getLogger(BinaryIncrQCommand.class);
 	

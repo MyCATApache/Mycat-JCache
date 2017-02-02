@@ -5,14 +5,14 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.mycat.jcache.net.command.Command;
+import io.mycat.jcache.net.command.BinaryCommand;
 import io.mycat.jcache.net.conn.Connection;
 
 /**
  * Created by qd on 2016/11/29.
  * @author  yanglinlin
  */
-public class BinaryAddCommand implements Command {
+public class BinaryAddCommand implements BinaryCommand {
     private static final Logger logger = LoggerFactory.getLogger(BinaryAddCommand.class);
 
     @Override

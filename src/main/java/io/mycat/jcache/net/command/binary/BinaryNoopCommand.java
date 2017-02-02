@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import io.mycat.jcache.enums.protocol.binary.ProtocolBinaryCommand;
 import io.mycat.jcache.enums.protocol.binary.ProtocolResponseStatus;
-import io.mycat.jcache.net.command.Command;
+import io.mycat.jcache.net.command.BinaryCommand;
 import io.mycat.jcache.net.conn.Connection;
 import io.mycat.jcache.net.conn.handler.BinaryResponseHeader;
 
@@ -42,7 +42,7 @@ import io.mycat.jcache.net.conn.handler.BinaryResponseHeader;
  * @author liyanjun
  *
  */
-public class BinaryNoopCommand implements Command{
+public class BinaryNoopCommand implements BinaryCommand{
 	
 	private static final Logger logger = LoggerFactory.getLogger(BinaryNoopCommand.class);
 	

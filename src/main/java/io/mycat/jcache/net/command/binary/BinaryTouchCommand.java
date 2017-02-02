@@ -6,7 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.mycat.jcache.enums.protocol.binary.ProtocolResponseStatus;
-import io.mycat.jcache.net.command.Command;
+import io.mycat.jcache.net.command.BinaryCommand;
 import io.mycat.jcache.net.conn.Connection;
 
 
@@ -34,7 +34,7 @@ import io.mycat.jcache.net.conn.Connection;
  * @author liyanjun
  *
  */
-public class BinaryTouchCommand implements Command{
+public class BinaryTouchCommand implements BinaryCommand{
 	
 	private static final Logger logger = LoggerFactory.getLogger(BinaryTouchCommand.class);
 	

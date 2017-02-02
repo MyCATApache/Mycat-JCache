@@ -6,10 +6,9 @@ import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.mycat.jcache.enums.protocol.binary.BinaryProtocol;
 import io.mycat.jcache.enums.protocol.binary.ProtocolBinaryCommand;
 import io.mycat.jcache.enums.protocol.binary.ProtocolResponseStatus;
-import io.mycat.jcache.net.command.Command;
+import io.mycat.jcache.net.command.BinaryCommand;
 import io.mycat.jcache.net.conn.Connection;
 import io.mycat.jcache.net.conn.handler.BinaryResponseHeader;
 import io.mycat.jcache.setting.Settings;
@@ -41,12 +40,16 @@ import io.mycat.jcache.util.ItemUtil;
  * @author liyanjun
  *
  */
-public class BinaryFlushCommand implements Command{
+public class BinaryFlushCommand implements BinaryCommand{
 	
 	private static final Logger logger = LoggerFactory.getLogger(BinaryFlushCommand.class);
 		
 	@Override
 	public void execute(Connection conn) throws IOException {
+		
+		if(logger.isDebugEnabled()){
+			logger.debug("execute flush command");
+		}
 
 		long new_oldest = 0;
 		
@@ -60,6 +63,8 @@ public class BinaryFlushCommand implements Command{
 		long exptime = extras.capacity()>0?extras.getInt(4):0;
 		
 		exptime = exptime * 1000L + System.currentTimeMillis();
+		
+		System.out.println(exptime);
 		
 		if(exptime > 0){
 			new_oldest = ItemUtil.realtime(exptime);
