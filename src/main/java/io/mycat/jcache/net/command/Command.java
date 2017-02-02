@@ -549,7 +549,8 @@ public interface Command {
 		String keystr = new String(cs.decode(key).array());
 		int nkey = readKeyLength(conn);
 		long cas = readCAS(conn);
-		ByteBuffer tmpbuf = ByteBuffer.allocate(JcacheGlobalConfig.INCR_MAX_STORAGE_LEN);
+//		ByteBuffer tmpbuf = ByteBuffer.allocate(JcacheGlobalConfig.INCR_MAX_STORAGE_LEN);
+		byte[] tmpbuf = new byte[8];
 		
 		ByteBuffer extras = readExtras(conn);
 		long amount = extras.getLong();
@@ -565,11 +566,9 @@ public interface Command {
 		JcacheContext.setLocal("cas", 0);
 		switch(result){
 		case OK:
-			byte[] rspValue = new byte[tmpbuf.position()];
-			tmpbuf.get(rspValue);
 			BinaryResponseHeader rsp = buildHeader(conn.getBinaryRequestHeader(), conn.getCurCommand().getByte(), 
-					null,rspValue, null, 0);
-			writeResponse(conn,rsp,null,null,rspValue);
+					null,tmpbuf, null, 0);
+			writeResponse(conn,rsp,null,null,tmpbuf);
 			break;
 		case NON_NUMERIC:
 			writeResponse(conn, conn.getCurCommand().getByte(), ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_DELTA_BADVAL.getStatus(), 0L);

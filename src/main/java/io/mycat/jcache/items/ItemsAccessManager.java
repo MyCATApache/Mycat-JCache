@@ -15,6 +15,7 @@ import io.mycat.jcache.net.JcacheGlobalConfig;
 import io.mycat.jcache.net.command.Command;
 import io.mycat.jcache.net.conn.Connection;
 import io.mycat.jcache.setting.Settings;
+import io.mycat.jcache.util.BytesUtil;
 import io.mycat.jcache.util.ItemChunkUtil;
 import io.mycat.jcache.util.ItemUtil;
 import io.mycat.jcache.util.UnSafeUtil;
@@ -142,12 +143,12 @@ public class ItemsAccessManager {
 	/*
 	 * Does arithmetic on a numeric item value.
 	 */
-	public DELTA_RESULT_TYPE add_delta(Connection c,String key,int nkey,boolean incr,long delta,ByteBuffer buf) throws IOException{
+	public DELTA_RESULT_TYPE add_delta(Connection c,String key,int nkey,boolean incr,long delta,byte[] tmpbuf) throws IOException{
 //		UnSafeUtil.unsafe.freeMemory;
 		DELTA_RESULT_TYPE ret;
 		long hv = JcacheContext.getHash().hash(key,nkey);
 		JcacheContext.getSegment().item_lock(hv);
-		ret = do_add_delta(c,key,nkey,incr,delta,buf,hv);
+		ret = do_add_delta(c,key,nkey,incr,delta,tmpbuf,hv);
 		JcacheContext.getSegment().item_unlock(hv);
 		return ret;
 	}
@@ -163,7 +164,7 @@ public class ItemsAccessManager {
 	 *
 	 * returns a response string to send back to the client.
 	 */
-	public DELTA_RESULT_TYPE do_add_delta(Connection conn,String key,int nkey,boolean incr,long delta,ByteBuffer buf,long hv) throws IOException{
+	public DELTA_RESULT_TYPE do_add_delta(Connection conn,String key,int nkey,boolean incr,long delta,byte[] buf,long hv) throws IOException{
 		Long value;
 		long ptr;
 		int res;
@@ -201,8 +202,8 @@ public class ItemsAccessManager {
 				value -= delta;
 			}
 		}
+		System.arraycopy(BytesUtil.LongToBytes(value), 0, buf, 0, 8);
 		byte[] valueByte = value.toString().getBytes(JcacheGlobalConfig.defaultCahrset);
-		buf.put(valueByte);
 		res = valueByte.length;
 		/* refcount == 2 means we are the only ones holding the item, and it is
 	     * linked. We hold the item's lock in this function, so refcount cannot

@@ -1,6 +1,7 @@
 package io.mycat.jcache;
 
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -77,8 +78,6 @@ public class AppTest {
 		System.out.println("get key "+key+" value is "+mcc.get(key));
 		System.out.println(mcc.append(key, "234"));
 		System.out.println(mcc.prepend(key, "34"));
-		System.out.println(mcc.incr(key));
-		System.out.println(mcc.decr(key));
 		System.out.println(mcc.incr(key,2l));
 		System.out.println(mcc.decr(key,2l));
 		System.out.println(mcc.addOrIncr(key,1l));
