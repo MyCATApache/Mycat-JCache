@@ -552,9 +552,9 @@ public interface Command {
 		ByteBuffer tmpbuf = ByteBuffer.allocate(JcacheGlobalConfig.INCR_MAX_STORAGE_LEN);
 		
 		ByteBuffer extras = readExtras(conn);
-		int amount = extras.getInt();
-		int initial = extras.getInt(4);
-		int expiration = extras.getInt(8);
+		long amount = extras.getLong();
+		long initial = extras.getLong(8);
+		int expiration = extras.getInt(16);
 		
 		JcacheContext.setLocal("cas", cas);
 		DELTA_RESULT_TYPE result = JcacheContext.getItemsAccessManager().add_delta(conn, keystr, nkey,

@@ -376,9 +376,9 @@ public class ItemUtil {
 	 * @return
 	 */
 	public static byte[] getValue(long addr){
-		int length = getNbytes(addr);
+		int length = getNbytes(addr)-2; //  value 最后两位为 \r\n 获取时 ，不包含这两位
 		byte[] data = new byte[length];
-		UnSafeUtil.getBytes(ITEM_data(addr), data,0,length);
+		UnSafeUtil.getBytes(ITEM_data(addr), data,0,length); 
 		return data;
 	}
 	
