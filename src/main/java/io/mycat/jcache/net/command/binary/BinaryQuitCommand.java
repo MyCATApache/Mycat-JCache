@@ -5,10 +5,10 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.mycat.jcache.enums.conn.CONN_STATES;
+import io.mycat.jcache.enums.protocol.binary.ProtocolResponseStatus;
 import io.mycat.jcache.net.command.Command;
 import io.mycat.jcache.net.conn.Connection;
-import io.mycat.jcache.net.conn.handler.BinaryProtocol;
-import io.mycat.jcache.net.conn.handler.BinaryResponseHeader;
 
 
 
@@ -40,11 +40,10 @@ public class BinaryQuitCommand implements Command{
 		
 		if (keylen == 0 && extlen == 0 && bodylen == 0) {
 			logger.info("execute command quit ");
-			BinaryResponseHeader header = buildHeader(conn.getBinaryRequestHeader(),BinaryProtocol.OPCODE_QUIT,null,null,null,0l);
-//			writeResponse(conn,header,null,null,null);
-			conn.closeSocket();  //TODO 待优化 状态机
+			writeResponse(conn, conn.getCurCommand().getByte(), ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_SUCCESS.getStatus(), 0L);
+			conn.setWrite_and_go(CONN_STATES.conn_closing);
 		} else {
-			writeResponse(conn, BinaryProtocol.OPCODE_QUIT, ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_EINVAL.getStatus(), 0L);
+			writeResponse(conn, conn.getCurCommand().getByte(), ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_EINVAL.getStatus(), 0L);
 		}
 	}
 }

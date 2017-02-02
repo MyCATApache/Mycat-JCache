@@ -8,7 +8,7 @@
  */
 package io.mycat.jcache.setting;
 
-import io.mycat.jcache.enums.Protocol;
+import io.mycat.jcache.enums.protocol.Protocol;
 import io.mycat.jcache.net.JcacheGlobalConfig;
 import sun.misc.VM;
 

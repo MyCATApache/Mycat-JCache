@@ -8,12 +8,12 @@
  */
 package io.mycat.jcache.hash.impl;
 
-import io.mycat.jcache.setting.Settings;
+import io.mycat.jcache.enums.hash.Hash_func_type;
 import io.mycat.jcache.hash.Hash;
 import io.mycat.jcache.hash.Hash_init;
-import io.mycat.jcache.hash.Hash_func_type;
 import io.mycat.jcache.hash.impl.algorithm.Jenkins_hash;
 import io.mycat.jcache.hash.impl.algorithm.Pig_SDBM_hash;
+import io.mycat.jcache.setting.Settings;
 
 /**
  * Created by PigBrother(LZS/LZY) on 2016/12/11 18:12.

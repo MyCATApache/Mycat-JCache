@@ -1,15 +1,12 @@
 package io.mycat.jcache.net.command.binary;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.mycat.jcache.net.JcacheGlobalConfig;
 import io.mycat.jcache.net.command.Command;
 import io.mycat.jcache.net.conn.Connection;
-import io.mycat.jcache.net.conn.handler.BinaryProtocol;
 
 /**
  * Created by qd on 2016/11/29.
@@ -20,25 +17,9 @@ public class BinaryAddCommand implements Command {
 
     @Override
     public void execute(Connection conn) throws IOException {
-        logger.info("add command");
-        ByteBuffer key = readkey(conn);
-        byte[] ds = new byte[key.remaining()];
-        key.get(ds);
-        if(ds.length>JcacheGlobalConfig.KEY_MAX_LENGTH) {
-            writeResponse(conn, BinaryProtocol.OPCODE_ADD, ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_KEY_ENOENT.getStatus(), 0L);
-        }
-
-        String keys = new String(cs.decode(key).array());
-        ByteBuffer extras = readExtras(conn);
-        extras.limit(extras.position()+4);
-        ByteBuffer flags = extras.slice();
-        extras.position(extras.limit());
-        ByteBuffer expiry = extras.slice();
-
-        ByteBuffer value = readValue(conn);
-        byte[] data = new byte[value.remaining()];
-        value.get(data);
-
-        writeResponse(conn,BinaryProtocol.OPCODE_ADD,ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_SUCCESS.getStatus(),1l);
+        if(logger.isDebugEnabled()){
+			logger.debug("add command");
+		}
+        process_bin_update(conn);
     }
 }

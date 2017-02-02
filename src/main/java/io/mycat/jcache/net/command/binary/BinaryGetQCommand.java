@@ -1,17 +1,13 @@
 package io.mycat.jcache.net.command.binary;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.mycat.jcache.context.JcacheContext;
+import io.mycat.jcache.enums.protocol.binary.ProtocolResponseStatus;
 import io.mycat.jcache.net.command.Command;
 import io.mycat.jcache.net.conn.Connection;
-import io.mycat.jcache.net.conn.handler.BinaryProtocol;
-import io.mycat.jcache.net.conn.handler.BinaryResponseHeader;
-import io.mycat.jcache.util.ItemUtil;
 
 
 /**
@@ -45,30 +41,9 @@ public class BinaryGetQCommand implements Command{
 		int extlen  = conn.getBinaryRequestHeader().getExtlen();
 		
 		if (extlen == 0 && bodylen == keylen && keylen > 0) {
-			try {
-				ByteBuffer key = readkey(conn);
-				String keystr = new String(cs.decode(key).array());
-				logger.info("execute command getkq key {}",keystr);
-				long addr = JcacheContext.getItemsAccessManager().item_get(keystr,keylen, conn);
-				if(addr==0){
-					writeResponse(conn, BinaryProtocol.OPCODE_GETQ, ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_KEY_ENOENT.getStatus(), 0L);
-				}else{
-					byte[] value = ItemUtil.getValue(addr);
-					int flags = ItemUtil.ITEM_suffix_flags(addr);
-					byte[] extras = new byte[4];
-					extras[0] = (byte) (flags <<24  &0xff);
-					extras[1] = (byte) (flags <<16  &0xff);
-					extras[2] = (byte) (flags <<8   &0xff);
-					extras[3] = (byte) (flags       &0xff);
-					BinaryResponseHeader header = buildHeader(conn.getBinaryRequestHeader(),BinaryProtocol.OPCODE_GETQ,null,value,extras,ItemUtil.getCAS(addr));
-					writeResponse(conn,header,extras,null,new String(value).getBytes());
-				}		
-			} catch (Exception e) {
-				logger.error(" execute command getkq error ", e);
-				throw e;
-			}
+			process_bin_get_or_touch(conn);
 		} else {
-			writeResponse(conn, BinaryProtocol.OPCODE_GETQ, ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_EINVAL.getStatus(), 0L);
+			writeResponse(conn, conn.getCurCommand().getByte(), ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_EINVAL.getStatus(), 0L);
 		}
 	}
 }

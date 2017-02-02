@@ -6,9 +6,11 @@ import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.mycat.jcache.enums.protocol.binary.BinaryProtocol;
+import io.mycat.jcache.enums.protocol.binary.ProtocolBinaryCommand;
+import io.mycat.jcache.enums.protocol.binary.ProtocolResponseStatus;
 import io.mycat.jcache.net.command.Command;
 import io.mycat.jcache.net.conn.Connection;
-import io.mycat.jcache.net.conn.handler.BinaryProtocol;
 import io.mycat.jcache.net.conn.handler.BinaryResponseHeader;
 import io.mycat.jcache.setting.Settings;
 import io.mycat.jcache.util.ItemUtil;
@@ -49,7 +51,7 @@ public class BinaryFlushCommand implements Command{
 		long new_oldest = 0;
 		
 		if(!Settings.flushEnabled){
-			writeResponse(conn, BinaryProtocol.OPCODE_FLUSH, ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_AUTH_ERROR.getStatus(), 0L);
+			writeResponse(conn,ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_FLUSH.getByte(), ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_AUTH_ERROR.getStatus(), 0L);
 			return;
 		}
 		
@@ -57,7 +59,7 @@ public class BinaryFlushCommand implements Command{
 		
 		long exptime = extras.capacity()>0?extras.getInt(4):0;
 		
-		exptime = exptime * 1000 + System.currentTimeMillis();
+		exptime = exptime * 1000L + System.currentTimeMillis();
 		
 		if(exptime > 0){
 			new_oldest = ItemUtil.realtime(exptime);
@@ -77,7 +79,7 @@ public class BinaryFlushCommand implements Command{
 //	    pthread_mutex_lock(&c->thread->stats.mutex);
 //	    c->thread->stats.flush_cmds++;
 //	    pthread_mutex_unlock(&c->thread->stats.mutex);
-		BinaryResponseHeader header = buildHeader(conn.getBinaryRequestHeader(),BinaryProtocol.OPCODE_FLUSH,null,null,null,0l);
+		BinaryResponseHeader header = buildHeader(conn.getBinaryRequestHeader(),ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_FLUSH.getByte(),null,null,null,0l);
 		writeResponse(conn,header,null,null,null);
 
 	}

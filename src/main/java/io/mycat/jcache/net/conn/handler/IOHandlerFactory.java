@@ -1,6 +1,6 @@
 package io.mycat.jcache.net.conn.handler;
 
-import io.mycat.jcache.enums.Protocol;
+import io.mycat.jcache.enums.protocol.Protocol;
 
 /**
  * @author dragonwu

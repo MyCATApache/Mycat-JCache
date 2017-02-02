@@ -1,4 +1,4 @@
-package io.mycat.jcache.net.command.binary;
+package io.mycat.jcache.enums.protocol.binary;
 
 
 /**
@@ -14,4 +14,8 @@ public enum ProtocolDatatypes {
     }
 
     private byte type;
+    
+    public byte getByte(){
+    	return type;
+    }
 }

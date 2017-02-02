@@ -1,4 +1,4 @@
-package io.mycat.jcache.enums;
+package io.mycat.jcache.enums.protocol;
 
 /**
  * 协议类型

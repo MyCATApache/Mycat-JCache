@@ -1,10 +1,5 @@
 package io.mycat.jcache.net;
 
-import java.io.File;
-import java.io.IOException;
-
-import io.mycat.jcache.enums.Protocol;
-
 /**
  * jcache 全局配置
  * @author 
@@ -50,5 +45,8 @@ public final class JcacheGlobalConfig {
 	/** How long an object can reasonably be assumed to be locked before
     	harvesting it on a low memory condition. Default: disabled. */
 	public static final int TAIL_REPAIR_TIME_DEFAULT = 0;
+	
+	/** Size of an incr buf. */
+	public static final int INCR_MAX_STORAGE_LEN = 24;
 	
 }

@@ -11,9 +11,9 @@ import org.slf4j.LoggerFactory;
 
 import io.mycat.jcache.context.JcacheContext;
 import io.mycat.jcache.context.StatsState;
-import io.mycat.jcache.enums.Protocol;
+import io.mycat.jcache.enums.hash.Hash_func_type;
+import io.mycat.jcache.enums.protocol.Protocol;
 import io.mycat.jcache.hash.Assoc;
-import io.mycat.jcache.hash.Hash_func_type;
 import io.mycat.jcache.hash.Segment;
 import io.mycat.jcache.hash.impl.AssocImpl;
 import io.mycat.jcache.hash.impl.algorithm.Jenkins_hash;

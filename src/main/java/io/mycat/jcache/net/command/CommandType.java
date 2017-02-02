@@ -1,6 +1,6 @@
 package io.mycat.jcache.net.command;
 
-import io.mycat.jcache.net.conn.handler.BinaryProtocol;
+import io.mycat.jcache.enums.protocol.binary.ProtocolBinaryCommand;
 
 /**
  * 命令类型  同时支持 二进制 /文本协议查找
@@ -9,35 +9,58 @@ import io.mycat.jcache.net.conn.handler.BinaryProtocol;
  */
 public enum CommandType {
 	
-	get(BinaryProtocol.OPCODE_GET),
-	getq(BinaryProtocol.OPCODE_GETQ),
-	getk(BinaryProtocol.OPCODE_GETK),
-	getkq(BinaryProtocol.OPCODE_GETKQ),
-	set(BinaryProtocol.OPCODE_SET),
-	add(BinaryProtocol.OPCODE_ADD),
-	replace(BinaryProtocol.OPCODE_REPLACE),
-	delete(BinaryProtocol.OPCODE_DELETE),
-	increment(BinaryProtocol.OPCODE_INCREMENT),
-	decrement(BinaryProtocol.OPCODE_DECREMENT),
-	incrementq(BinaryProtocol.OPCODE_INCREMENTQ),
-	decrementq(BinaryProtocol.OPCODE_DECREMENTQ),
-	quit(BinaryProtocol.OPCODE_QUIT),
-	quitq(BinaryProtocol.OPCODE_QUITQ),
-	flush(BinaryProtocol.OPCODE_FLUSH),
-	flushq(BinaryProtocol.OPCODE_FLUSHQ),
-	noop(BinaryProtocol.OPCODE_NOOP),
-	version(BinaryProtocol.OPCODE_VERSION),
-	append(BinaryProtocol.OPCODE_APPEND),
-	prepend(BinaryProtocol.OPCODE_PREPEND),
-	stat(BinaryProtocol.OPCODE_STAT),
-	auth_list(BinaryProtocol.OPCODE_AUTH_LIST),
-	start_auth(BinaryProtocol.OPCODE_START_AUTH),
-	auth_steps(BinaryProtocol.OPCODE_AUTH_STEPS),
-	touch(BinaryProtocol.OPCODE_TOUCH),
-	gat(BinaryProtocol.OPCODE_GAT),
-	gatq(BinaryProtocol.OPCODE_GATQ),
-	gatk(BinaryProtocol.OPCODE_GATK),
-	gatkq(BinaryProtocol.OPCODE_GATKQ);
+	get(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_GET.getByte()),
+	getq(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_GETQ.getByte()),
+	
+	getk(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_GETK.getByte()),
+	getkq(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_GETKQ.getByte()),
+	
+	gat(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_GAT.getByte()),
+	gatq(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_GETQ.getByte()),
+	
+	gatk(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_GATK.getByte()),
+	gatkq(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_GATKQ.getByte()),
+	
+	set(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_SET.getByte()),
+	setq(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_SETQ.getByte()),
+	
+	add(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_ADD.getByte()),
+	addq(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_ADDQ.getByte()),
+	
+	replace(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_REPLACE.getByte()),
+	replaceq(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_REPLACEQ.getByte()),
+	
+	delete(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_DELETE.getByte()),
+	deleteq(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_RDELETEQ.getByte()),
+	
+	increment(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_INCREMENT.getByte()),
+	incrementq(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_INCREMENTQ.getByte()),
+	
+	
+	decrement(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_DECREMENT.getByte()),
+	decrementq(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_DECREMENTQ.getByte()),
+	
+	quit(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_QUIT.getByte()),
+	quitq(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_QUITQ.getByte()),
+	
+	flush(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_FLUSH.getByte()),
+	flushq(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_FLUSHQ.getByte()),
+	
+	append(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_APPEND.getByte()),
+	appendq(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_APPENDQ.getByte()),
+	
+	prepend(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_PREPEND.getByte()),
+	prependq(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_PREPENDQ.getByte()),
+	
+	noop(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_NOOP.getByte()),
+	version(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_VERSION.getByte()),
+	
+	
+	stat(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_STAT.getByte()),
+//	auth_list(BinaryProtocol.OPCODE_AUTH_LIST),
+//	start_auth(BinaryProtocol.OPCODE_START_AUTH),
+//	auth_steps(BinaryProtocol.OPCODE_AUTH_STEPS),
+	touch(ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_TOUCH.getByte());
 	
 	CommandType(byte type){
 		this.type = type;

@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 
 import io.mycat.jcache.net.command.Command;
 import io.mycat.jcache.net.conn.Connection;
-import io.mycat.jcache.net.conn.handler.BinaryProtocol;
 import io.mycat.jcache.net.conn.handler.BinaryResponseHeader;
 
 
@@ -47,10 +46,10 @@ public class BinaryStatCommand implements Command{
 				logger.info("execute command stat key {}",keystr);				
 			}
 
-			BinaryResponseHeader header = buildHeader(conn.getBinaryRequestHeader(),BinaryProtocol.OPCODE_GAT,null,null,null,1l);
-			writeResponse(conn,header,null,null,null);
+//			BinaryResponseHeader header = buildHeader(conn.getBinaryRequestHeader(),BinaryProtocol.OPCODE_GAT,null,null,null,1l);
+//			writeResponse(conn,header,null,null,null);
 		} else {
-			writeResponse(conn, BinaryProtocol.OPCODE_GAT, ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_EINVAL.getStatus(), 0L);
+//			writeResponse(conn, BinaryProtocol.OPCODE_GAT, ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_EINVAL.getStatus(), 0L);
 		}
 	}
 }

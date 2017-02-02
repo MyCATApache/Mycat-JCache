@@ -1,17 +1,5 @@
 package io.mycat.jcache.net.conn;
 
-import io.mycat.jcache.enums.Protocol;
-import io.mycat.jcache.net.JcacheGlobalConfig;
-import io.mycat.jcache.net.command.CommandType;
-import io.mycat.jcache.net.conn.handler.BinaryProtocol;
-import io.mycat.jcache.net.conn.handler.BinaryRequestHeader;
-import io.mycat.jcache.net.conn.handler.IOHandler;
-import io.mycat.jcache.net.conn.handler.IOHandlerFactory;
-import io.mycat.jcache.setting.Settings;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -23,27 +11,55 @@ import java.util.LinkedList;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.mycat.jcache.enums.conn.BIN_SUBSTATES;
+import io.mycat.jcache.enums.conn.CONN_STATES;
+import io.mycat.jcache.enums.conn.TRY_READ_RESULT;
+import io.mycat.jcache.enums.protocol.Protocol;
+import io.mycat.jcache.enums.protocol.binary.ProtocolMagic;
+import io.mycat.jcache.net.command.CommandType;
+import io.mycat.jcache.net.conn.handler.BinaryRequestHeader;
+import io.mycat.jcache.net.conn.handler.IOHandler;
+import io.mycat.jcache.net.conn.handler.IOHandlerFactory;
+import io.mycat.jcache.setting.Settings;
+
 
 /**
  * @author liyanjun
  * @author dragonwu
  */
+@SuppressWarnings("restriction")
 public class Connection implements Closeable, Runnable {
 
     public static Logger logger = LoggerFactory.getLogger(Connection.class);
+    
+    private static final int DATA_BUFFER_SIZE = 2048;
 
     private SelectionKey selectionKey;
     protected final SocketChannel channel;
     private ByteBuffer writeBuffer;  //写缓冲区 
-    protected ByteBuffer readBuffer; //读冲区
+    protected ByteBuffer readBuffer; /* 读缓冲区  默认 2048 会扩容    */
+    
     private LinkedList<ByteBuffer> writeQueue = new LinkedList<ByteBuffer>();
     private AtomicBoolean writingFlag = new AtomicBoolean(false);
     private long id;
     private boolean isClosed;
     private IOHandler ioHandler;  //io 协议处理类
     private Protocol protocol;  //协议类型
-    private CommandType curCommand;
-
+    
+    private CommandType curCommand; /* current command beging processed */
+    private int subCmd; /* 用于add set replace cas  */
+    private long cas; /* th cas to return */
+    private CONN_STATES state;
+    private CONN_STATES write_and_go;  /** which state to go into after finishing current write */
+    private BIN_SUBSTATES substate;
+    private boolean noreply; /* True if the reply should not be sent. */
+    private long item;
+    
+    
+    
     /**
      * 二进制请求头
      */
@@ -54,48 +70,13 @@ public class Connection implements Closeable, Runnable {
         this.channel = channel;
     }
 
-    public long getId() {
-        return this.id;
-    }
-
-    public Connection setId(long id) {
-        this.id = id;
-        return this;
-    }
-
-    public Connection setProtocol(Protocol protocol) {
-        this.protocol = protocol;
-        return this;
-    }
-
-    public Protocol getProtocol() {
-        return this.protocol;
-    }
-
-    public Connection setIOHanlder(IOHandler handler) {
-        this.ioHandler = handler;
-        return this;
-    }
-
-    public Connection setBinaryRequestHeader(BinaryRequestHeader binaryHeader) {
-        this.binaryHeader = binaryHeader;
-        return this;
-    }
-
-    public BinaryRequestHeader getBinaryRequestHeader() {
-        return this.binaryHeader;
-    }
-
-    @Override
-    public void close() throws IOException {
-        closeSocket();
-    }
-
     public void register(Selector selector) throws IOException {
-        selectionKey = channel.register(selector, SelectionKey.OP_READ);
-        readBuffer = ByteBuffer.allocate((int)(1024*1024*1.2)); // 这里可以修改成从内存模块获取
-//        writeBuffer=ByteBuffer.allocate(1024);
-//        ioHandler = new IOHandler();
+        
+    	state = CONN_STATES.conn_read;
+    	
+    	readBuffer = ByteBuffer.allocate(DATA_BUFFER_SIZE);
+    	writeBuffer = ByteBuffer.allocate(DATA_BUFFER_SIZE);
+        selectionKey = channel.register(selector, SelectionKey.OP_READ);  //注册读事件监听
         // 绑定会话
         selectionKey.attach(this);  //会在 reactor 中被调用
         if (ioHandler != null) {
@@ -105,22 +86,73 @@ public class Connection implements Closeable, Runnable {
 
     @Override
     public void run() {
-        try {
-            if (selectionKey.isValid()) {
-                if (selectionKey.isReadable()) {
-                    logger.debug("select-key read");
-                    asynRead();
-                }
-                if (selectionKey.isWritable()) {
-                    logger.debug("select-key write");
-                    asynWrite();
-                }
-            } else {
-                logger.debug("select-key cancelled");
-                selectionKey.cancel();
-            }
-        } catch (final Throwable e) {
-            if (e instanceof CancelledKeyException) {
+       boolean stop = false;
+       TRY_READ_RESULT res;
+       try {
+    	   while(!stop){
+        	   switch(state){
+    	    	   case conn_listening:   // 无效状态
+    	    		   stop = true;
+    	    		   break;
+    	    	   case conn_waiting:
+    	    		   selectionKey.interestOps(selectionKey.interestOps() | SelectionKey.OP_READ);
+    	    		   state = CONN_STATES.conn_read;
+    	    		   stop = true;
+    	    		   break;
+    	    	   case conn_read:
+    	    		   res = try_read_network();
+    	    		   switch(res){
+	    	    		   case READ_NO_DATA_RECEIVED:
+	    	    			   state = CONN_STATES.conn_waiting;
+	    	    			   break;
+	    	    		   case READ_DATA_RECEIVED:   /* 数据读取完成,开始解析命令 */
+	    	    			   state = CONN_STATES.conn_parse_cmd;
+	    	    			   break;
+	    	    		   case READ_ERROR:
+	    	    			   state = CONN_STATES.conn_closing;
+	    	    			   break;
+	    	    		   case READ_MEMORY_ERROR: /* Failed to allocate more memory */
+	    	    			   /* State already set by try_read_network */
+	    	    			   break;
+    	    		   }
+    	    		   break;
+    	    	   case conn_parse_cmd:
+    	    		   if(!try_read_command()){
+    	    			   state = CONN_STATES.conn_waiting;
+    	    		   }
+    	    		   break;
+    	    	   case conn_new_cmd:
+    	    		   break;
+    	    	   case conn_swallow:
+    	    		   break;
+    	    	   case conn_write:
+    	    		   asynWrite();
+    	    		   state = CONN_STATES.conn_read;
+    	    		   stop = true;
+    	    		   break;
+    	    	   case conn_mwrite:
+    	    		   break;
+    	    	   case conn_closing:
+    	    		   close(" close connection!");
+    	    		   stop = true;
+    	    		   break;
+    	    	   case conn_closed:
+    	    		   stop = true;
+    	    		   break;
+    	    	   case conn_watch:
+    	    		   stop = true;
+    	    		   break;
+    	    	   case conn_max_state:
+    	    		   break;
+        	   }
+        	   if(getWrite_and_go()!=null){
+        		   state = getWrite_and_go();
+        		   stop = false;
+        		   setWrite_and_go(null);
+        	   }
+           }
+		} catch (Exception e) {
+			if (e instanceof CancelledKeyException) {
                 if (logger.isDebugEnabled()) {
                     logger.debug(this + " socket key canceled");
                 }
@@ -128,25 +160,94 @@ public class Connection implements Closeable, Runnable {
                 logger.error("connection id "+id ,e);
             }
             close("program err:" + e.toString());
+		}
+    }
+    
+    /*
+     * read from network as much as we can, handle buffer overflow and connection
+     * close.
+     * before reading, move the remaining incomplete fragment of a command
+     * (if any) to the beginning of the buffer.
+     *
+     * To protect us from someone flooding a connection with bogus data causing
+     * the connection to eat up all available memory, break out and start looking
+     * at the data I've got after a number of reallocs...
+     *
+     * @return enum try_read_result
+     */
+    private TRY_READ_RESULT try_read_network() throws IOException{
+    	TRY_READ_RESULT godata = TRY_READ_RESULT.READ_NO_DATA_RECEIVED;
+    	boolean hasdata = true;
+    	while(hasdata){
+    		final int got = channel.read(readBuffer);
+        	switch (got) {
+            case 0: {	
+            	if (readBuffer.limit() == readBuffer.capacity()) {
+            		ByteBuffer newReadBuffer;
+            		int newcap = readBuffer.capacity()*2;
+            		if(newcap >=Runtime.getRuntime().freeMemory()){
+            			setWrite_and_go(CONN_STATES.conn_closing);
+            			return TRY_READ_RESULT.READ_MEMORY_ERROR;
+            		}
+                	newReadBuffer = ByteBuffer.allocate(readBuffer.capacity()*2);
+                	newReadBuffer.put(readBuffer.array());
+                	newReadBuffer.position(readBuffer.position());
+                	readBuffer = newReadBuffer;
+                	newReadBuffer = null;
+            	}else if (readBuffer.limit() < readBuffer.capacity()
+                        && readBuffer.position() == readBuffer.limit()) {
+                    readBuffer.limit(readBuffer.capacity());
+                }else{
+                	godata = TRY_READ_RESULT.READ_NO_DATA_RECEIVED;
+                }
+                break;
+            }
+            case -1: {
+            	hasdata = false;
+            	godata = TRY_READ_RESULT.READ_ERROR;
+                break;
+            }
+            default: {
+            	godata = TRY_READ_RESULT.READ_DATA_RECEIVED;
+            	
+            	if(readBuffer.position() < readBuffer.limit()){
+            		hasdata = false;
+            	}else{
+            		continue;
+            	}
 
-        }
+	            }
+	    	}
+	    }
+    	return godata;
+    }
+    
+    private boolean try_read_command() throws IOException{
+        // 处理指令
+      readBuffer.flip();
+      if(Objects.equals(Settings.binding_protocol,Protocol.negotiating)){
+          byte magic = readBuffer.array()[0];
+          dynamicProtocol(magic);
+      }
+      ioHandler.doReadHandler(this);
+      return true;
     }
 
     /**
-     * 异步读取,该方法在 reactor 中 被调用
+     * 
      *
      * @throws IOException
      */
+    @Deprecated
     public void asynRead() throws IOException {
-//		final ConDataBuffer buffer = readBuffer;
-//		final int got =  buffer.transferFrom(channel);
+    	ByteBuffer newReadBuffer;
         final int got = channel.read(readBuffer);
         switch (got) {
             case 0: {
-                // 如果空间不够了，继续分配空间读取
-//	            if (readBuffer.isFull()) {
-//	                //TODO extends
-//	            }
+	            if (readBuffer.limit() == readBuffer.capacity()) {
+	            	newReadBuffer = ByteBuffer.allocate(readBuffer.capacity()*2);
+//	            	newReadBuffer.put(readBuffer.)
+	            }
                 if (readBuffer.limit() < readBuffer.capacity()
                         && readBuffer.position() == readBuffer.limit()) {
                     readBuffer.limit(readBuffer.capacity());
@@ -178,7 +279,7 @@ public class Connection implements Closeable, Runnable {
      * 商定协议
      */
     private void dynamicProtocol(byte magic) {
-        if ((magic & 0xff) == (BinaryProtocol.MAGIC_REQ & 0xff)) {
+        if ((magic & 0xff) == (ProtocolMagic.PROTOCOL_BINARY_REQ.getByte() & 0xff)) {
             setProtocol(Protocol.binary);
         } else {
             setProtocol(Protocol.ascii);
@@ -200,7 +301,7 @@ public class Connection implements Closeable, Runnable {
             ByteBuffer theWriteBuf = writeBuffer;
             if (theWriteBuf == null && writeQueue.isEmpty()) {
                 disableWrite();
-            } else if (theWriteBuf != null) {
+            } else if (theWriteBuf != null&&writeBuffer.position()!=0) {
                 writeQueue.add(writeBuffer);
                 writeToChannel(theWriteBuf);
             } else if (!writeQueue.isEmpty()) {
@@ -239,6 +340,7 @@ public class Connection implements Closeable, Runnable {
     }
 
     public void enableWrite(boolean wakeup) {
+    	state = CONN_STATES.conn_write;
         boolean needWakeup = false;
         SelectionKey key = this.selectionKey;
         try {
@@ -278,6 +380,7 @@ public class Connection implements Closeable, Runnable {
             closeSocket();
             this.cleanup();
             isClosed = true;
+            state = CONN_STATES.conn_closed;
             logger.info("close connection,reason:" + reason + " ," + this.getClass());
             if (ioHandler != null) {
                 ioHandler.onClosed(this, reason);
@@ -332,4 +435,89 @@ public class Connection implements Closeable, Runnable {
     public void setCurCommand(CommandType curCommand) {
         this.curCommand = curCommand;
     }
+
+	public BIN_SUBSTATES getSubstate() {
+		return substate;
+	}
+
+	public void setSubstate(BIN_SUBSTATES substate) {
+		this.substate = substate;
+	}
+	
+    public long getId() {
+        return this.id;
+    }
+
+    public Connection setId(long id) {
+        this.id = id;
+        return this;
+    }
+
+    public Connection setProtocol(Protocol protocol) {
+        this.protocol = protocol;
+        return this;
+    }
+
+    public Protocol getProtocol() {
+        return this.protocol;
+    }
+
+    public Connection setIOHanlder(IOHandler handler) {
+        this.ioHandler = handler;
+        return this;
+    }
+
+    public Connection setBinaryRequestHeader(BinaryRequestHeader binaryHeader) {
+        this.binaryHeader = binaryHeader;
+        return this;
+    }
+
+    public BinaryRequestHeader getBinaryRequestHeader() {
+        return this.binaryHeader;
+    }
+
+    @Override
+    public void close() throws IOException {
+        closeSocket();
+    }
+
+	public boolean isNoreply() {
+		return noreply;
+	}
+
+	public void setNoreply(boolean noreply) {
+		this.noreply = noreply;
+	}
+
+	public CONN_STATES getWrite_and_go() {
+		return write_and_go;
+	}
+
+	public void setWrite_and_go(CONN_STATES write_and_go) {
+		this.write_and_go = write_and_go;
+	}
+
+	public int getSubCmd() {
+		return subCmd;
+	}
+
+	public void setSubCmd(int subCmd) {
+		this.subCmd = subCmd;
+	}
+
+	public long getCas() {
+		return cas;
+	}
+
+	public void setCas(long cas) {
+		this.cas = cas;
+	}
+
+	public long getItem() {
+		return item;
+	}
+
+	public void setItem(long item) {
+		this.item = item;
+	}
 }

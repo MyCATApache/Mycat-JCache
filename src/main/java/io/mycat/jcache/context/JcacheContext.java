@@ -1,11 +1,13 @@
 package io.mycat.jcache.context;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import io.mycat.jcache.enums.hash.Hash_func_type;
 import io.mycat.jcache.hash.Assoc;
 import io.mycat.jcache.hash.Hash;
-import io.mycat.jcache.hash.Hash_func_type;
 import io.mycat.jcache.hash.Segment;
 import io.mycat.jcache.hash.impl.HashImpl;
 import io.mycat.jcache.items.ItemsAccessManager;
@@ -18,6 +20,8 @@ import io.mycat.jcache.setting.Settings;
  *
  */
 public class JcacheContext {
+	
+	private static ThreadLocal<Map<Object,Object>> local = new ThreadLocal<>();
 	
 	/**
 	 * 内存池
@@ -127,5 +131,18 @@ public class JcacheContext {
 	
 	public static int hashmask(long n){
 		return hashsize(n) - 1;
+	}
+
+	public static Object getLocal(Object key) {
+		return local.get().get(key);
+	}
+
+	public static void setLocal(Object key,Object value) {
+		Map<Object,Object> map = local.get();
+		if(map==null){
+			map = new HashMap<>();
+			local.set(map);
+		}
+		map.put(key, value);
 	}
 }

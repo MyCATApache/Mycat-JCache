@@ -1,5 +1,6 @@
 package io.mycat.jcache.util;
 
+@SuppressWarnings("restriction")
 /* Header when an item is actually a chunk of another item. */
 public class ItemChunkUtil {
 	
@@ -24,6 +25,8 @@ public class ItemChunkUtil {
 	private static final byte it_flags=39;
 	/* Same as above. */
 	private static final byte slabs_clsid=40;
+	
+	private static final byte data = 41;
 
 	public static int getNtotal() {
 		return ntotal;
@@ -68,6 +71,14 @@ public class ItemChunkUtil {
 	public static void setUsed(long addr,int value){
 		UnSafeUtil.putInt(addr+used, value);
 	}
+	
+	public static void incrUsed(long addr,int value){
+		UnSafeUtil.unsafe.getAndAddInt(null, addr+used, value);
+	}
+	
+	public static void descUsed(long addr,int value){
+		UnSafeUtil.unsafe.getAndAddInt(null, addr+used, -value);
+	}
 
 	public static int getNbytes(long addr) {
 		return UnSafeUtil.getInt(addr+nbytes);
@@ -107,5 +118,13 @@ public class ItemChunkUtil {
 	
 	public static void setSlabsClsid(long addr,byte value){
 		UnSafeUtil.putByte(addr+slabs_clsid, value);
+	}
+
+	public static void setData(long addr,byte[] datas) {
+		UnSafeUtil.setBytes(addr+data, datas, 0, datas.length);;
+	}
+	
+	public static long getDataAddr(long addr) {
+		return UnSafeUtil.getLong(addr+data);
 	}
 }

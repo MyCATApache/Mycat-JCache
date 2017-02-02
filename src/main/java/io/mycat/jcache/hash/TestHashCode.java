@@ -8,12 +8,13 @@
  */
 package io.mycat.jcache.hash;
 
-import io.mycat.jcache.hash.impl.HashImpl;
-
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.UUID;
+
+import io.mycat.jcache.enums.hash.Hash_func_type;
+import io.mycat.jcache.hash.impl.HashImpl;
 
 
 /**

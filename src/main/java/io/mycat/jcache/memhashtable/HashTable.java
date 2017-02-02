@@ -10,7 +10,7 @@ package io.mycat.jcache.memhashtable;
 
 import java.nio.ByteBuffer;
 
-import io.mycat.jcache.hash.Hash_func_type;
+import io.mycat.jcache.enums.hash.Hash_func_type;
 import io.mycat.jcache.hash.Hash_init;
 import io.mycat.jcache.hash.impl.HashImpl;
 import io.mycat.jcache.setting.Settings;

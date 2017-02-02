@@ -391,6 +391,10 @@ public class ItemUtil {
 		UnSafeUtil.setBytes(ITEM_data(addr), value, 0, value.length);
 	}
 	
+	public static void setLongValue(long addr,long value){
+		UnSafeUtil.putLong(ITEM_data(addr), value);
+	}
+	
 	/**
 	 * Generates the variable-sized part of the header for an object.
 	 *
@@ -507,7 +511,7 @@ public class ItemUtil {
 			if(exptime <= Settings.process_started){
 				return System.currentTimeMillis();
 			}
-			return exptime - (exptime - Settings.process_started);
+			return REALTIME_MAXDELTA + System.currentTimeMillis();  // 最大缓存 30 天
 		}else{
 			return exptime;
 		}

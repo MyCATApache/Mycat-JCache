@@ -3,11 +3,13 @@ package io.mycat.jcache.net.conn.handler;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import io.mycat.jcache.enums.conn.CONN_STATES;
+import io.mycat.jcache.enums.protocol.binary.BinaryProtocol;
+import io.mycat.jcache.enums.protocol.binary.ProtocolResponseStatus;
 import io.mycat.jcache.net.JcacheGlobalConfig;
 import io.mycat.jcache.net.command.Command;
 import io.mycat.jcache.net.command.CommandContext;
 import io.mycat.jcache.net.command.CommandType;
-import io.mycat.jcache.net.command.binary.ProtocolResponseStatus;
 import io.mycat.jcache.net.conn.Connection;
 
 
@@ -15,7 +17,8 @@ import io.mycat.jcache.net.conn.Connection;
 public class BinaryIOHandler implements IOHandler{ 
 
 	@Override
-	public void doReadHandler(Connection conn) throws IOException {
+	public void doReadHandler(Connection conn) throws IOException {	
+		
 		Command command = null;
 		final ByteBuffer readbuffer = conn.getReadDataBuffer();
 		int offset = readbuffer.position();
@@ -36,11 +39,7 @@ public class BinaryIOHandler implements IOHandler{
     			readbuffer.compact();
     			return;
     		}
-//fix  bug  some command only has header!!
-//    		if(length == BinaryProtocol.memcache_packetHeaderSize){
-//    			// @todo handle empty packet
-//    			return;
-//    		}
+    		
     		/**
     		 * 解析 request header
     		 */
@@ -53,6 +52,7 @@ public class BinaryIOHandler implements IOHandler{
     	        Command.writeResponseError(conn, 
     	        						   conn.getBinaryRequestHeader().getOpcode(),
     	        						   ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_UNKNOWN_COMMAND.getStatus());
+    	        conn.setWrite_and_go(CONN_STATES.conn_closing);
     	        return;
     	    }
     	    
@@ -62,6 +62,8 @@ public class BinaryIOHandler implements IOHandler{
 //    	        c->write_and_go = conn_closing;
 //    	        return;
 //    	    }
+    	    conn.setNoreply(true);
+    	    
     	    if(keylen > JcacheGlobalConfig.KEY_MAX_LENGTH) {
     	    	Command.writeResponseError(conn, 
 						   conn.getBinaryRequestHeader().getOpcode(),
@@ -73,9 +75,14 @@ public class BinaryIOHandler implements IOHandler{
     		command = CommandContext.getCommand(opcode);
     		
     		if(command==null){
+    			conn.setNoreply(false);
     			Command.writeResponseError(conn, 
 						   conn.getBinaryRequestHeader().getOpcode(),
 						   ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_UNKNOWN_COMMAND.getStatus());
+    			conn.setWrite_and_go(CONN_STATES.conn_closing);
+    			return;
+    		}else{
+    			
     		}
     		conn.setCurCommand(CommandType.getType(opcode));
     		command.execute(conn);
