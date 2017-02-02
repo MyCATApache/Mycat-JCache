@@ -222,8 +222,10 @@ public class JcacheMain
 
     	String[] commandLineparams = args.split("-");
     	IntStream.range(0, commandLineparams.length).forEach(i->{
-    		String[] params = args.split(" ");
+    		String[] params = commandLineparams[i].split(" ");
     		switch (params[0]) {
+    		case "":
+    			break;
     		case "A": /* enable admin shutdown commannd  是否运行客户端使用shutdown命令。默认是不允许的 */
     			Settings.shutdownCommand = true;
     			break;

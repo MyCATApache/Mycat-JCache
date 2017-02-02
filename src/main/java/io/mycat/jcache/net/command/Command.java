@@ -452,7 +452,9 @@ public interface Command {
 								||CommandType.gat.equals(conn.getCurCommand())
 								||CommandType.gatk.equals(conn.getCurCommand()));
 		boolean should_return_key = (CommandType.getk.equals(conn.getCurCommand())
-									||CommandType.gatk.equals(conn.getCurCommand()));
+									||CommandType.getkq.equals(conn.getCurCommand())
+									||CommandType.gatk.equals(conn.getCurCommand())
+									||CommandType.gatkq.equals(conn.getCurCommand()));
 		
 		if(should_touch){
 			long exptime = readExtras(conn).getInt()*1000L +System.currentTimeMillis();
@@ -492,7 +494,7 @@ public interface Command {
 			
 			BinaryResponseHeader rsp = buildHeader(conn.getBinaryRequestHeader(), conn.getCurCommand().getByte(), 
 										skey,value, extras, ItemUtil.ITEM_get_cas(it));
-			writeResponse(conn,rsp,extras,null,value);
+			writeResponse(conn,rsp,extras,skey,value);
 			conn.setItem(it);
 			if(logger.isDebugEnabled()){
 				logger.debug("item is {}",ItemUtil.ItemToString(it));

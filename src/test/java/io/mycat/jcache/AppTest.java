@@ -12,6 +12,7 @@ import org.junit.Test;
 import com.whalin.MemCached.MemCachedClient;
 import com.whalin.MemCached.SockIOPool;
 
+import io.mycat.jcache.net.JcacheMain;
 import junit.framework.Assert;
 
 /**
@@ -23,8 +24,11 @@ public class AppTest {
 	
 	@BeforeClass
     public static void setup() throws Exception{
+		String[] args = {"-m 1024"};  //启动时 指定启动参数为  1024m
 		
-//		McacheMain.main(null);
+//		JcacheMain.main(args);
+		
+//		Thread.sleep(3000);
 		
 		
 		// 设置缓存服务器列表，当使用分布式缓存的时，可以指定多个缓存服务器。这里应该设置为多个不同的服务，我这里将两个服务设置为一样的，大家不要向我学习，呵呵。
@@ -69,41 +73,39 @@ public class AppTest {
 		String key = "foo0";
 		boolean result;
 		int j;
-		for(j=0;j<1;j++){
+		for(j=0;j<10;j++){
 			result = mcc.set("foo"+j, value);
 	        System.out.println(result+":"+j);
 	        Assert.assertEquals(result, true);
 		}
 		
-		System.out.println("get key "+key+" value is "+mcc.get(key));
-		System.out.println(mcc.append(key, "234"));
-		System.out.println(mcc.prepend(key, "34"));
-		System.out.println(mcc.incr(key,2l));
-		System.out.println(mcc.decr(key,2l));
-		System.out.println(mcc.addOrIncr(key,1l));
-		System.out.println(mcc.addOrDecr(key,2l));
-		System.out.println(mcc.getCounter(key));
-		System.out.println(mcc.getMulti(new String[]{key}));
-		System.out.println(mcc.get(key));
-		System.out.println(mcc.keyExists(key));
-		System.out.println(mcc.delete(key));
-		System.out.println(mcc.get(key));
-		System.out.println(mcc.keyExists(key));
-//		result = mcc.set("foo111"+j, value);
-//        System.out.println(result+":"+j);
-//        
-//        result = mcc.set("foo111"+j, value);
-//        System.out.println(result+":"+j);
-        
-//        mcc.flushAll();
+		Assert.assertEquals(mcc.get(key), value);
+		Assert.assertEquals(mcc.append(key, "234"), true);
+		Assert.assertEquals(mcc.prepend(key, "34"), true);
+		Assert.assertEquals(mcc.incr(key,2l), 34123236);
+		Assert.assertEquals(mcc.decr(key,2l), 34123234);
+		Assert.assertEquals(mcc.addOrIncr(key,1l), 34123235);
+		Assert.assertEquals(mcc.addOrDecr(key,2l), 34123233);
+		Assert.assertEquals(mcc.getCounter(key), 34123233);
+		Assert.assertEquals(mcc.getMulti(new String[]{key}).get(key), "34123233");
+		Assert.assertEquals(mcc.get(key), "34123233");
+		Assert.assertEquals(mcc.keyExists(key), true);
+		Assert.assertEquals(mcc.delete(key), true);
+		Assert.assertNull(mcc.get(key));
+		Assert.assertEquals(mcc.keyExists(key), false);
+		
 	}
 	
-//	@Test
+	@Test
 	public void testsetCommand(){
 		Random ran = new Random();
 		List<Thread> threads = new ArrayList<>();
 		int teamnum = 10000;
-		
+		String value = "";
+		for(int k=0;k<10;k++){
+			value += "1qazxsw23edcvfr45tgbnhy6ujm,ki89ol./;p0-['";
+		}
+		final String value1 = value;
 		for(int j = 1;j<=10;j++){
 			final int k = j;
 			Thread thread = new Thread(new Runnable(){
@@ -112,18 +114,9 @@ public class AppTest {
 				public void run() {
 					
 					for(int i=teamnum*(k-1);i<teamnum*k;i++){
-						boolean result = mcc.set("foo"+i, "This"+i);
-						
+						boolean result = mcc.set("foo"+i, value1+i);
 				        System.out.println(result+":"+i);
 				        Assert.assertEquals(result, true);
-//				        Object bar = mcc.get("foo"+i);
-//				        System.out.println(">>> " + bar);
-//				        try {
-//							Thread.sleep(ran.nextInt(400));
-//						} catch (InterruptedException e) {
-//							// TODO Auto-generated catch block
-//							e.printStackTrace();
-//						}
 					}
 				}
 				
@@ -131,7 +124,6 @@ public class AppTest {
 			
 			thread.start();
 			threads.add(thread);
-			
 		}
 		
 		for(Thread thread:threads){
@@ -140,38 +132,5 @@ public class AppTest {
 			} catch (InterruptedException e) {
 			}
 		}
-		System.out.println(mcc.get("foo0"));
 	}
-
-    @Test
-    public void testAddCommand(){
-        boolean result = mcc.set("foo1","add command");
-        System.out.println(result);
-        Object str = mcc.get("foo1");;
-        System.out.println(str);
-    }
-    
-    @Test
-    public void getMulti(){
-    	 Map<String,Object> bars = mcc.getMulti(new String[]{"foo0","foo1"});
-         System.out.println(">>> " + bars);
-    }
-    
-    @Test
-    public void teadGets(){
-    	 Object bars = mcc.gets("foo1");
-         System.out.println(">>> " + bars);
-    }
-    
-    @Test
-    public void testgetMultiArray(){
-    	 Object bars = mcc.getMultiArray(new String[]{"foo0","foo1"});
-         System.out.println(">>> " + bars);
-    }
-    
-    @Test
-    public void testdelete(){
-		System.out.println(mcc.delete("foo0"));
-		System.out.println(mcc.get("foo0"));
-    }
 }
