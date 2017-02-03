@@ -14,7 +14,11 @@ jcache 是用java 开发,需要有 java8 以上运行环境。
   linux 下 需要运行 startup.sh 文件。
 
 如果需要配置参数 可以以如下形式输入:
+
     windows 下 Mycat-jcache-0.5\bin>startup.bat -m 1024
+    
     linux   下 ./startup.sh -m 1024
+    
  具体参数含义及配置格式 和 memcached 保持一致.
+ 
  默认端口11211.
