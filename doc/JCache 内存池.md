@@ -9,3 +9,4 @@ JCache 内部存储涉及到的概念:
 
 4.pool  全局唯一的一个容器.负责 slabclass,slab,item 的生命周期.
 
+### item 结构
