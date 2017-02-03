@@ -74,7 +74,10 @@ public class JcacheMain
     	
     	/* process arguments */
         if(args.length > 0){
-        	initGlobalConfig(args[0]);
+        	for(int i = 0;i<args.length;i++){
+        		System.out.println("args["+i+"] = " + args[i]);
+        	}
+        	initGlobalConfig(args);
         }
     	
     	initRlim();
@@ -218,9 +221,16 @@ public class JcacheMain
     
     /**
      */
-    public static void initGlobalConfig(String args){    	
-
-    	String[] commandLineparams = args.split("-");
+    public static void initGlobalConfig(String[] args){
+    	
+    	StringBuffer sb = new StringBuffer();
+    	for(int i = 0; i < args.length; i++){
+    	 sb.append(args[i]).append(" ");
+    	}
+    	String tmpparams = sb.toString();
+    	
+    	String[] commandLineparams = tmpparams.split("-");
+    	
     	IntStream.range(0, commandLineparams.length).forEach(i->{
     		String[] params = commandLineparams[i].split(" ");
     		switch (params[0]) {
