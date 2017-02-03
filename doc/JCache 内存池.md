@@ -10,3 +10,16 @@ JCache 内部存储涉及到的概念:
 4.pool  全局唯一的一个容器.负责 slabclass,slab,item 的生命周期.
 
 ### [item 结构](https://github.com/MyCATApache/Mycat-JCache/blob/master/src/main/java/io/mycat/jcache/util/ItemUtil.java)
+
+prev:       指向上一个item 的内存首地址,没有就是0.<br>
+next:       指向下一个item 的内存首地址,没有就是0.<br>
+hnext:      hashtable 某一个桶内, 指向下一个item 的内存首地址,hash单向链表<br>
+flushtime:  当前item 最近一次访问时间. 每次访问都会刷新该字段.<br>
+exptime:    过期时间<br>
+nbytes:     value 的总大小, 包含最后两位\r\n 的长度. 客户端传递过来的数据并没有包含\r\n,存储的时候在最后两位附加上的.<br>
+refcount:   当前item 被 引用的次数,只在内部使用.<br><br>
+nsuffix:    flags 和 nbytes 的字符串长度.<br>
+            格式为: '' "flags" '' "nbytes" \r \n  .  '' 代表  一个空的字符<br>
+            例如: 如果 flags=32 （32 代表字符串）, nbytes=15 （ 15 代表 value 的byte[] 长度.）.<br>
+                  那么 nsuffix = ''32''15\r\n. <br>
+it_flags:   
