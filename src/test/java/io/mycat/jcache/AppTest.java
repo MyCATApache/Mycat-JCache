@@ -58,10 +58,13 @@ public class AppTest {
 	
 	
 	/**
+	 * 运行单元测试   需要先启动    jcache server   入口类        io.mycat.jcache.net.JcacheMain 
+	 * 
+	 *  
 	 * 测试lru 需要设置  tailRepairTime参数大于零，或者 item 过期时间,使memcached 可以删掉掉 item.
 	 * 否则,达到内存上限时,将不能够再保存新的item
 	 */
-	@Test
+//	@Test
 	public void testsetCommand1(){
 		String value = "123";
 //		for(int i=0;i<3000;i++){
@@ -103,7 +106,56 @@ public class AppTest {
 		Assert.assertEquals(mcc.keyExists(key), false);
 	}
 	
-	@Test
+	/**
+	 * 运行单元测试   需要先启动    jcache server   入口类        io.mycat.jcache.net.JcacheMain 
+	 * 
+	 * 
+	 * 测试 hashtable 扩容
+	 */
+//	@Test
+	public void testslabCommand(){
+		Random ran = new Random();
+		List<Thread> threads = new ArrayList<>();
+		int teamnum = 100000;
+		String value = "";
+		for(int k=0;k<10;k++){
+			value += "1qazxsw23edcvfr45tgbnhy6ujm,ki89ol./;p0-['";
+		}
+		final String value1 = value;
+		for(int j = 1;j<=10;j++){
+			final int k = j;
+			Thread thread = new Thread(new Runnable(){
+
+				@Override
+				public void run() {
+					
+					for(int i=teamnum*(k-1);i<teamnum*k;i++){
+						boolean result = mcc.set("foo"+i, value1+i);
+				        System.out.println(result+":"+i);
+				        Assert.assertEquals(result, true);
+					}
+				}
+				
+			});
+			
+			thread.start();
+			threads.add(thread);
+		}
+		
+		for(Thread thread:threads){
+			try {
+				thread.join();
+			} catch (InterruptedException e) {
+			}
+		}
+	}
+	
+	/**
+	 * 运行单元测试   需要先启动    jcache server   入口类        io.mycat.jcache.net.JcacheMain 
+	 * 
+	 * 测试 内存池 slab 分配.
+	 */
+//	@Test
 	public void testsetCommand(){
 		Random ran = new Random();
 		List<Thread> threads = new ArrayList<>();
