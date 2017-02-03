@@ -23,10 +23,6 @@ public class AppTest {
     public static void setup() throws Exception{
 		String[] args = {"-m 1024"};  //启动时 指定启动参数为  1024m
 		
-//		JcacheMain.main(args);
-		
-//		Thread.sleep(3000);
-		
 		
 		// 设置缓存服务器列表，当使用分布式缓存的时，可以指定多个缓存服务器。这里应该设置为多个不同的服务，我这里将两个服务设置为一样的，大家不要向我学习，呵呵。
         String[] servers =
@@ -117,10 +113,10 @@ public class AppTest {
 		Random ran = new Random();
 		List<Thread> threads = new ArrayList<>();
 		int teamnum = 100000;
-		String value = "";
-		for(int k=0;k<10;k++){
-			value += "1qazxsw23edcvfr45tgbnhy6ujm,ki89ol./;p0-['";
-		}
+		String value = "test hashtable extend ";
+//		for(int k=0;k<10;k++){
+//			value += "1qazxsw23edcvfr45tgbnhy6ujm,ki89ol./;p0-['";
+//		}
 		final String value1 = value;
 		for(int j = 1;j<=10;j++){
 			final int k = j;
