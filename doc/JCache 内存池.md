@@ -25,7 +25,7 @@ JCache 内部存储涉及到的概念:
 |10|nsuffix|suffix 的长度.           
 |11|nkey| key 的长度
 |12|cas|  cas  当前item cas 值.  如果 启用cas 的话, 当前字段有值,如果没有启用cas,item结构中没有该字段
-|13|suffix| 格式为: '' "flags" '' "nbytes" \r \n  .  '' 代表  一个空的字符
-             例如: 如果 flags=32 （32 代表字符串）, nbytes=15 （ 15 代表 value 的byte[] 长度.）.
-                  那么 nsuffix = ''32''15\r\n.
+|13|suffix| 格式为: '' "flags" '' "nbytes" \r \n  .  '' 代表  一个空的字符<br>
+             例如: 如果 flags=32 （32 代表字符串）, nbytes=15 （ 15 代表 value 的byte[] 长度.）.<br>
+                  那么 nsuffix = ''32''15\r\n.<br>
 |14|value|将客户端传递进来的value + \r\n后存储.
