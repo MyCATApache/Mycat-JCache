@@ -1,13 +1,7 @@
-package io.mycat.jcache.enums;
+package io.mycat.jcache.enums.conn;
 
-/**
- * 二进制协议 状态
- * @author liyanjun
- *
- */
-public enum BIN_substates {
-
-    bin_no_state,
+public enum BIN_SUBSTATES {
+	bin_no_state,
     bin_reading_set_header,
     bin_reading_cas_header,
     bin_read_set_value,

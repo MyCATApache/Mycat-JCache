@@ -8,12 +8,13 @@
  */
 package io.mycat.jcache.hash;
 
-import io.mycat.jcache.hash.impl.HashImpl;
-
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.UUID;
+
+import io.mycat.jcache.enums.hash.Hash_func_type;
+import io.mycat.jcache.hash.impl.HashImpl;
 
 
 /**
@@ -50,7 +51,8 @@ import java.util.UUID;
  */
 public class TestHashCode {
     public static void main(String[] args) {
-        Hash hash = new HashImpl(Hash_func_type.PIG_HASH);
+    	Hash_init hash = new HashImpl();
+    	hash.hash_init(Hash_func_type.PIG_HASH);
         Random r = new Random();
         String key;
         int tmp = 1;

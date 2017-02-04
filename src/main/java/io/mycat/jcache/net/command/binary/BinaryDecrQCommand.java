@@ -1,15 +1,12 @@
 package io.mycat.jcache.net.command.binary;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.mycat.jcache.net.command.Command;
+import io.mycat.jcache.net.command.BinaryCommand;
 import io.mycat.jcache.net.conn.Connection;
-import io.mycat.jcache.net.conn.handler.BinaryProtocol;
-import io.mycat.jcache.net.conn.handler.BinaryResponseHeader;
 
 
 /**
@@ -28,30 +25,12 @@ import io.mycat.jcache.net.conn.handler.BinaryResponseHeader;
  * @author liyanjun
  *
  */
-public class BinaryDecrQCommand implements Command{
+public class BinaryDecrQCommand implements BinaryCommand{
 	
 	private static final Logger logger = LoggerFactory.getLogger(BinaryDecrQCommand.class);
-	
-	private long amount;
-	private long init;
-	private int expir;
 		
 	@Override
 	public void execute(Connection conn) throws IOException {
-		int keylen = conn.getBinaryRequestHeader().getKeylen();
-		int bodylen = conn.getBinaryRequestHeader().getBodylen();
-		int extlen  = conn.getBinaryRequestHeader().getExtlen();
-		
-		if (keylen > 0 && extlen == 20 && bodylen == (keylen + extlen)) {
-			//TODO bin_reading_incr_header
-			ByteBuffer key = readkey(conn);
-			String keystr = new String(cs.decode(key).array());
-			logger.info("execute command gat key {}",keystr);
-			byte[] value = "This is a test String".getBytes("UTF-8");
-			BinaryResponseHeader header = buildHeader(conn.getBinaryRequestHeader(),BinaryProtocol.OPCODE_DECREMENTQ,null,value,null,1l);
-			writeResponse(conn,header,null,null,value);
-        } else {
-        	writeResponse(conn, BinaryProtocol.OPCODE_DECREMENTQ, ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_EINVAL.getStatus(), 0L);
-        }
+		complete_incr_bin(conn);
 	}
 }

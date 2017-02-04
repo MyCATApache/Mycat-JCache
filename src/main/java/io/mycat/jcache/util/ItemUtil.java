@@ -1,6 +1,12 @@
 package io.mycat.jcache.util;
 
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.mycat.jcache.enums.ItemFlags;
+import io.mycat.jcache.net.JcacheMain;
 import io.mycat.jcache.setting.Settings;
 
 /**
@@ -9,7 +15,7 @@ import io.mycat.jcache.setting.Settings;
  * @author PigBrother
  * bytebuffer 组织形式， header 和 data 部分。                                                                                                                                                                       header 部分结束
  * prev,next,hnext,flushTime,expTime,nbytes,refCount,slabsClisd,it_flags,nsuffix,nskey,//    CAS,key,suffix,value
- * 0    8    16    24        32      40     44       46         47       48      49          50  58  58+key
+ * 0    8    16    24        32      40     44       48         49       50      51          52  60  60+key
  *
  * item   cas  key  suffix  data
  *
@@ -17,6 +23,18 @@ import io.mycat.jcache.setting.Settings;
  * 其中 "flag"  为 flag 的字符形式， "nbytes"  是 nbytes 的字符形式
  */
 public class ItemUtil {
+	
+	private static final Logger logger = LoggerFactory.getLogger(ItemUtil.class);
+
+	
+	public static String ItemToString(long addr){
+		return "{prev =" + getPrev(addr)+",next = "+getNext(addr)+",hnext = "+getHNext(addr)+", flushtime = "
+			   + getTime(addr)+", exptime = "+getExpTime(addr)+", nbytes = "+getNbytes(addr)+", refcount = "
+			   + getRefCount(addr)
+			   +", slabsclsid = " + getSlabsClsid(addr)+", itlags = "
+			   + getItflags(addr)+",nsuffix = " + getNsuffix(addr)+",nskey = " + getNskey(addr)+", key = "
+			   + getKey(addr)+",suffix = " + new String(getSuffix(addr))+",value = " + new String(getValue(addr)) +"}";
+	}
 
 	/**
 	 * PigBrother
@@ -29,14 +47,18 @@ public class ItemUtil {
 	private static final byte EXPTIME=32;
 	private static final byte NBYTES=40;
 	private static final byte REFCOUNT=44;
-	private static final byte SLABSCLISD=46;
-	private static final byte IT_FLAGS=47;
-	private static final byte NSUFFIX=48;
-	private static final byte NSKEY=49;
-	private static final byte CAS=50;
-	private static final byte KEY=58;
+	private static final byte SLABSCLISD=48;
+	private static final byte IT_FLAGS=49;
+	private static final byte NSUFFIX=50;
+	private static final byte NSKEY=51;
+	private static final byte CAS=52;
+//	private static final byte KEY=58;
 //	private static final byte SUFFER=0;这两个字段偏移是动态的
 //	private static final byte VALUE=0;
+	
+	private static AtomicLong cas_id = new AtomicLong(0);
+	
+	private static long REALTIME_MAXDELTA = 60*60*24*30*1000L;
 
 
 	////////////////////////////////// header begin ////////////////////////////////////////////////
@@ -106,6 +128,8 @@ public class ItemUtil {
 	 */
 	public static long getHNext(long addr){
 		//return UnSafeUtil.getByte(addr+2);
+//		throw new RuntimeException();
+//		logger.debug("addr=========== : {}",addr);  TODO  test  为什么一直在执行
 		return UnSafeUtil.getLongVolatile(addr+HNEXT);
 	}
 	// fixed setHNext(long addr, long next)
@@ -124,7 +148,7 @@ public class ItemUtil {
 	public static long getTime(long addr){
 		//PigBrother
 		//return UnSafeUtil.getInt(addr+3);
-		return UnSafeUtil.getIntVolatile(addr+FLUSHTIME);
+		return UnSafeUtil.getLongVolatile(addr+FLUSHTIME);
 	}
 
 	public static void setTime(long addr,long time){
@@ -146,7 +170,7 @@ public class ItemUtil {
 	}
 	
 	public static void setExpTime(long addr,long expTime){
-		UnSafeUtil.putLong(addr+EXPTIME, expTime);
+		UnSafeUtil.putLongVolatile(addr+EXPTIME, expTime);
 	}
 	
 	/**
@@ -171,11 +195,33 @@ public class ItemUtil {
 	 * item
 	 * @return
 	 */
-	public static short getRefCount(long addr){
+	public static int getRefCount(long addr){
 		//PigBrother
 		//return UnSafeUtil.getShort(addr+15);
-		return UnSafeUtil.getShortVolatile(addr+REFCOUNT);
+		return UnSafeUtil.getIntVolatile(addr+REFCOUNT);
 	}
+	
+    /**
+     * Atomically increments by one the current value.
+     *
+     * @return the updated value
+     */
+    public static int incrRefCount(long addr) {
+        return UnSafeUtil.incrementAndGetInt(addr+REFCOUNT);
+    }
+
+    /**
+     * Atomically decrements by one the current value.
+     *
+     * @return the updated value
+     */
+    public static int decrRefCount(long addr) {
+        return UnSafeUtil.decrementAndGetInt(addr+REFCOUNT);
+    }
+    
+    public static void setRefCount(long addr,int value){
+    	UnSafeUtil.putInt(addr+REFCOUNT, value);
+    }
 	
 	/**
 	 * which slab class we're in 标记item属于哪个slabclass下
@@ -297,6 +343,7 @@ public class ItemUtil {
 	 */
 	public static void setKey(byte[] key_bytes, long addr){
 		if(key_bytes.length!=(getNskey(addr)&0xff)){
+			logger.error("Error, NSkey's values != key_bytes.length . key is {},nskey value is {}, key_bytes.legth is {}, addr is {}",getKey(addr),getNskey(addr),key_bytes.length,addr);
 			throw new RuntimeException("Error, NSkey's values != key_bytes.length");
 		}
 		UnSafeUtil.setBytes(ITEM_key(addr), key_bytes, 0, key_bytes.length);
@@ -319,7 +366,7 @@ public class ItemUtil {
 	public static byte[] getSuffix(long addr){
 		int length = getNsuffix(addr);
 		byte[] data = new byte[length];
-		UnSafeUtil.getBytes(addr, data, (int)ITEM_suffix(addr),length);
+		UnSafeUtil.getBytes(ITEM_suffix(addr), data, 0,length);
 		return data;
 	}
 	
@@ -329,9 +376,9 @@ public class ItemUtil {
 	 * @return
 	 */
 	public static byte[] getValue(long addr){
-		int length = getNbytes(addr);
+		int length = getNbytes(addr)-2; //  value 最后两位为 \r\n 获取时 ，不包含这两位
 		byte[] data = new byte[length];
-		UnSafeUtil.getBytes(ITEM_data(addr), data,0,length);
+		UnSafeUtil.getBytes(ITEM_data(addr), data,0,length); 
 		return data;
 	}
 	
@@ -342,6 +389,10 @@ public class ItemUtil {
 	 */
 	public static void setValue(long addr,byte[] value){
 		UnSafeUtil.setBytes(ITEM_data(addr), value, 0, value.length);
+	}
+	
+	public static void setLongValue(long addr,long value){
+		UnSafeUtil.putLong(ITEM_data(addr), value);
 	}
 	
 	/**
@@ -445,11 +496,24 @@ public class ItemUtil {
 	 * @return
 	 */
 	public static int ITEM_ntotal(long addr){
-		//TODO 
-		return 0;
+		return CAS + getNskey(addr) + 1 + getNsuffix(addr) + getNbytes(addr)+(((getItflags(addr)&ItemFlags.ITEM_CAS.getFlags())==0)?0:8);
 	}
-
-	public static void setRefCount(long addr, short value) {
-		UnSafeUtil.putShort(addr+REFCOUNT,value);
+	
+	public static long get_cas_id(){
+		return cas_id.incrementAndGet();
+	}
+	
+	public static long realtime(long exptime){
+		/* no. of seconds in 30 days - largest possible delta exptime */
+		if(exptime==0) return 0;
+		
+		if(exptime > (REALTIME_MAXDELTA + System.currentTimeMillis())){
+			if(exptime <= Settings.process_started){
+				return System.currentTimeMillis();
+			}
+			return REALTIME_MAXDELTA + System.currentTimeMillis();  // 最大缓存 30 天
+		}else{
+			return exptime;
+		}
 	}
 }

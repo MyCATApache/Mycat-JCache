@@ -5,10 +5,11 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.mycat.jcache.enums.protocol.binary.ProtocolBinaryCommand;
+import io.mycat.jcache.enums.protocol.binary.ProtocolResponseStatus;
 import io.mycat.jcache.net.JcacheGlobalConfig;
-import io.mycat.jcache.net.command.Command;
+import io.mycat.jcache.net.command.BinaryCommand;
 import io.mycat.jcache.net.conn.Connection;
-import io.mycat.jcache.net.conn.handler.BinaryProtocol;
 import io.mycat.jcache.net.conn.handler.BinaryResponseHeader;
 
 
@@ -31,7 +32,7 @@ import io.mycat.jcache.net.conn.handler.BinaryResponseHeader;
  * @author liyanjun
  *
  */
-public class BinaryVersionCommand implements Command{
+public class BinaryVersionCommand implements BinaryCommand{
 	
 	private static final Logger logger = LoggerFactory.getLogger(BinaryVersionCommand.class);
 	
@@ -44,10 +45,10 @@ public class BinaryVersionCommand implements Command{
 		
 		if (keylen == 0 && extlen == 0 && bodylen == 0) {
 			logger.info("execute command quit ");
-			BinaryResponseHeader header = buildHeader(conn.getBinaryRequestHeader(),BinaryProtocol.OPCODE_VERSION,null,JcacheGlobalConfig.version.getBytes(),null,0l);
+			BinaryResponseHeader header = buildHeader(conn.getBinaryRequestHeader(),ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_VERSION.getByte(),null,JcacheGlobalConfig.version.getBytes(),null,0l);
 			writeResponse(conn,header,null,null,null);
 		} else {
-			writeResponse(conn, BinaryProtocol.OPCODE_VERSION, ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_EINVAL.getStatus(), 0L);
+			writeResponse(conn, ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_VERSION.getByte(), ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_EINVAL.getStatus(), 0L);
 		}
 	}
 }

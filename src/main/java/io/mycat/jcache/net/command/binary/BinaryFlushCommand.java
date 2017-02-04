@@ -1,14 +1,18 @@
 package io.mycat.jcache.net.command.binary;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.mycat.jcache.net.command.Command;
+import io.mycat.jcache.enums.protocol.binary.ProtocolBinaryCommand;
+import io.mycat.jcache.enums.protocol.binary.ProtocolResponseStatus;
+import io.mycat.jcache.net.command.BinaryCommand;
 import io.mycat.jcache.net.conn.Connection;
-import io.mycat.jcache.net.conn.handler.BinaryProtocol;
 import io.mycat.jcache.net.conn.handler.BinaryResponseHeader;
+import io.mycat.jcache.setting.Settings;
+import io.mycat.jcache.util.ItemUtil;
 
 /**
 	Request:
@@ -36,26 +40,52 @@ import io.mycat.jcache.net.conn.handler.BinaryResponseHeader;
  * @author liyanjun
  *
  */
-public class BinaryFlushCommand implements Command{
+public class BinaryFlushCommand implements BinaryCommand{
 	
 	private static final Logger logger = LoggerFactory.getLogger(BinaryFlushCommand.class);
-	
-	private int expir;
-	
+		
 	@Override
 	public void execute(Connection conn) throws IOException {
 		
-		int keylen = conn.getBinaryRequestHeader().getKeylen();
-		int bodylen = conn.getBinaryRequestHeader().getBodylen();
-		int extlen  = conn.getBinaryRequestHeader().getExtlen();
+		if(logger.isDebugEnabled()){
+			logger.debug("execute flush command");
+		}
+
+		long new_oldest = 0;
 		
-		if (keylen == 0 && bodylen == extlen && (extlen == 0 || extlen == 4)) {
-			logger.info("execute command flush ");
-			//TODO bin_read_flush_exptime
-			BinaryResponseHeader header = buildHeader(conn.getBinaryRequestHeader(),BinaryProtocol.OPCODE_FLUSH,null,null,null,0l);
-			writeResponse(conn,header,null,null,null);
-        } else {
-        	writeResponse(conn, BinaryProtocol.OPCODE_FLUSH, ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_EINVAL.getStatus(), 0L);
-        }
+		if(!Settings.flushEnabled){
+			writeResponse(conn,ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_FLUSH.getByte(), ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_AUTH_ERROR.getStatus(), 0L);
+			return;
+		}
+		
+		ByteBuffer extras = readExtras(conn);
+		
+		long exptime = extras.capacity()>0?extras.getInt(4):0;
+		
+		exptime = exptime * 1000L + System.currentTimeMillis();
+		
+		System.out.println(exptime);
+		
+		if(exptime > 0){
+			new_oldest = ItemUtil.realtime(exptime);
+		}else{
+			new_oldest = System.currentTimeMillis();
+		}
+		
+		if(Settings.useCas){
+			Settings.oldestLive = new_oldest - 1000;
+			if(Settings.oldestLive < System.currentTimeMillis()){
+				Settings.oldestCas = ItemUtil.get_cas_id();
+			}
+		}else{
+			Settings.oldestLive = new_oldest;
+		}
+		//TODO STATS
+//	    pthread_mutex_lock(&c->thread->stats.mutex);
+//	    c->thread->stats.flush_cmds++;
+//	    pthread_mutex_unlock(&c->thread->stats.mutex);
+		BinaryResponseHeader header = buildHeader(conn.getBinaryRequestHeader(),ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_FLUSH.getByte(),null,null,null,0l);
+		writeResponse(conn,header,null,null,null);
+
 	}
 }

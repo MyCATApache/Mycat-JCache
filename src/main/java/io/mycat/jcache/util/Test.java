@@ -7,7 +7,9 @@ package io.mycat.jcache.util;
  */
 public class Test {
 	
-	public static void main(String[] args) {
-	}
-
-}
+	private static final long _1G = 1024 * 1024 * 1024; 
+	
+    public static void main(String[] args) {
+    	System.out.println(0x80);
+    }
+}  

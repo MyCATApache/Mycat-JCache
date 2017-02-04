@@ -3,11 +3,14 @@ package io.mycat.jcache.net.conn.handler;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import io.mycat.jcache.enums.conn.CONN_STATES;
+import io.mycat.jcache.enums.protocol.binary.BinaryProtocol;
+import io.mycat.jcache.enums.protocol.binary.ProtocolResponseStatus;
 import io.mycat.jcache.net.JcacheGlobalConfig;
+import io.mycat.jcache.net.command.BinaryCommand;
 import io.mycat.jcache.net.command.Command;
 import io.mycat.jcache.net.command.CommandContext;
 import io.mycat.jcache.net.command.CommandType;
-import io.mycat.jcache.net.command.binary.ProtocolResponseStatus;
 import io.mycat.jcache.net.conn.Connection;
 
 
@@ -15,7 +18,8 @@ import io.mycat.jcache.net.conn.Connection;
 public class BinaryIOHandler implements IOHandler{ 
 
 	@Override
-	public void doReadHandler(Connection conn) throws IOException {
+	public void doReadHandler(Connection conn) throws IOException {	
+		
 		Command command = null;
 		final ByteBuffer readbuffer = conn.getReadDataBuffer();
 		int offset = readbuffer.position();
@@ -26,19 +30,17 @@ public class BinaryIOHandler implements IOHandler{
     		if(!validateHeader(offset, limit)) {
     			logger.debug("C#{}B#{} validate protocol packet header: too short, ready to handle next the read event offset{},limit{}",
     				conn.getId(), readbuffer.hashCode(),offset,limit);
+    			readbuffer.compact();
     			return; 
     		}
     		int length = getPacketLength(readbuffer,offset);
     		if((length + offset)> limit) {
     			logger.debug("C#{}B#{} nNot a whole packet: required length = {} bytes, cur total length = {} bytes, "
     			 	+ "ready to handle the next read event", conn.getId(), readbuffer.hashCode(), length, limit);
+    			readbuffer.compact();
     			return;
     		}
-//fix  bug  some command only has header!!
-//    		if(length == BinaryProtocol.memcache_packetHeaderSize){
-//    			// @todo handle empty packet
-//    			return;
-//    		}
+    		
     		/**
     		 * 解析 request header
     		 */
@@ -48,9 +50,10 @@ public class BinaryIOHandler implements IOHandler{
     		int bodylen = conn.getBinaryRequestHeader().getBodylen();
     		int extlen  = conn.getBinaryRequestHeader().getExtlen();
     	    if (keylen > bodylen || keylen + extlen > bodylen) {
-    	        Command.writeResponseError(conn, 
+    	    	BinaryCommand.writeResponseError(conn, 
     	        						   conn.getBinaryRequestHeader().getOpcode(),
     	        						   ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_UNKNOWN_COMMAND.getStatus());
+    	        conn.setWrite_and_go(CONN_STATES.conn_closing);
     	        return;
     	    }
     	    
@@ -60,8 +63,10 @@ public class BinaryIOHandler implements IOHandler{
 //    	        c->write_and_go = conn_closing;
 //    	        return;
 //    	    }
+    	    conn.setNoreply(true);
+    	    
     	    if(keylen > JcacheGlobalConfig.KEY_MAX_LENGTH) {
-    	    	Command.writeResponseError(conn, 
+    	    	BinaryCommand.writeResponseError(conn, 
 						   conn.getBinaryRequestHeader().getOpcode(),
 						   ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_EINVAL.getStatus());
     			return;
@@ -71,14 +76,18 @@ public class BinaryIOHandler implements IOHandler{
     		command = CommandContext.getCommand(opcode);
     		
     		if(command==null){
-    			Command.writeResponseError(conn, 
+    			conn.setNoreply(false);
+    			BinaryCommand.writeResponseError(conn, 
 						   conn.getBinaryRequestHeader().getOpcode(),
 						   ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_UNKNOWN_COMMAND.getStatus());
+    			conn.setWrite_and_go(CONN_STATES.conn_closing);
+    			return;
+    		}else{
+    			conn.setCurCommand(CommandType.getType(opcode));
+        		command.execute(conn);
+        		offset += length;
+        		readbuffer.position(offset);
     		}
-    		conn.setCurCommand(CommandType.getType(opcode));
-    		command.execute(conn);
-    		offset += length;
-    		readbuffer.position(offset);
     	}
     	readbuffer.clear();
 	}

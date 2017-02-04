@@ -1,21 +1,11 @@
 package io.mycat.jcache.net;
 
-import java.io.File;
-import java.io.IOException;
-
-import io.mycat.jcache.enums.Protocol;
-
 /**
- * Mcache 全局配置
+ * jcache 全局配置
  * @author 
  *
  */
 public final class JcacheGlobalConfig {
-	
-	/**
-	 * 默认端口
-	 */
-	public static int defaultPort = 9000;
 	
 	/**
 	 * 默认reactor pool 大小
@@ -42,13 +32,6 @@ public final class JcacheGlobalConfig {
 	 */
 	public static final String defaultCahrset = "UTF-8";
 	
-	/**
-	 * 绑定的协议 
-	 * -B 
-	 * - 可能值：ascii,binary,auto（默认）
-	 */
-	public static Protocol prot = Protocol.negotiating;
-	
 	/** Maximum length of a key */
 	public static final int KEY_MAX_LENGTH = 250;
 
@@ -57,6 +40,13 @@ public final class JcacheGlobalConfig {
 	public static final long VALUE_MAX_LENGTH=1024*1024;
 	
 	/** current version */
-	public static final String version = "0.1.0";
+	public static final String version = "0.5.0";
+	
+	/** How long an object can reasonably be assumed to be locked before
+    	harvesting it on a low memory condition. Default: disabled. */
+	public static final int TAIL_REPAIR_TIME_DEFAULT = 0;
+	
+	/** Size of an incr buf. */
+	public static final int INCR_MAX_STORAGE_LEN = 24;
 	
 }

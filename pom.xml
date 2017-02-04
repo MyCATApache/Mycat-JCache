@@ -13,6 +13,7 @@
 		<log4j-slf4j-impl.version>2.3</log4j-slf4j-impl.version>
 		<slf4j-api.version>1.7.12</slf4j-api.version>
 		<junit.version>4.4</junit.version>
+		<org.apache.commons.lang.version>2.6</org.apache.commons.lang.version>
 		<app.encoding>UTF-8</app.encoding>
 		<maven.build.timestamp.format>yyyy-MM-dd HH:mm:ss</maven.build.timestamp.format>
 		<version.template.file>version.txt.template</version.template.file>
@@ -37,6 +38,11 @@
 		<groupId>org.apache.logging.log4j</groupId>
 		<artifactId>log4j-slf4j-impl</artifactId>
 		<version>${log4j-slf4j-impl.version}</version>
+	</dependency>
+	<dependency>
+	    <groupId>commons-lang</groupId>
+	    <artifactId>commons-lang</artifactId>
+	    <version>${org.apache.commons.lang.version}</version>
 	</dependency>
 	<dependency>
 		<groupId>org.apache.logging.log4j</groupId>

@@ -5,6 +5,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import io.mycat.jcache.net.strategy.ReactorStrategy;
+import io.mycat.jcache.setting.Settings;
 
 
 
@@ -19,10 +20,6 @@ public class NIOReactorPool {
 	private final String rectorname = "rector";
 	
 	private final ReactorStrategy startegy;
-	/**
-	 * 多个 reactor 共用一个线程池
-	 */
-	private final ExecutorService executor=Executors.newWorkStealingPool();
 	
 	private volatile int lastreactor; // 上一次处理连接的reactor，使用volatile保证多线程操作时内存可见
 	
@@ -30,7 +27,7 @@ public class NIOReactorPool {
 		this.reactors = new NIOReactor[poolSize];
 		this.startegy = startegy;
 		for (int i = 0; i < poolSize; i++) {
-			NIOReactor reactor = new NIOReactor(rectorname + "-" + i,executor);
+			NIOReactor reactor = new NIOReactor(rectorname + "-" + i);
 			reactors[i] = reactor;
 			reactor.start();
 		}

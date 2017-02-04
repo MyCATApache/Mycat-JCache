@@ -8,6 +8,8 @@
  */
 package io.mycat.jcache.hash;
 
+import io.mycat.jcache.enums.hash.Hash_func_type;
+
 /**
  * Created by PigBrother(LZS/LZY) on 2016/12/12 7:22.
  */

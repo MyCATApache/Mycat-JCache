@@ -1,0 +1,9 @@
+package io.mycat.jcache.enums.memory;
+
+public enum REASSIGN_RESULT_TYPE {
+	REASSIGN_OK,
+	REASSIGN_RUNNING,
+	REASSIGN_BADCLASS,
+	REASSIGN_NOSPARE,
+	REASSIGN_SRC_DST_SAME
+}

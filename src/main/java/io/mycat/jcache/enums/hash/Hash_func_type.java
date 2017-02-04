@@ -6,7 +6,7 @@
  *
  *  备注:
  */
-package io.mycat.jcache.hash;
+package io.mycat.jcache.enums.hash;
 
 /**
  * Created by PigBrother(LZS/LZY) on 2016/12/11 18:09.

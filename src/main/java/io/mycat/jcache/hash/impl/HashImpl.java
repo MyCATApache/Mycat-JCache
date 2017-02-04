@@ -8,12 +8,12 @@
  */
 package io.mycat.jcache.hash.impl;
 
-import io.mycat.jcache.setting.Settings;
+import io.mycat.jcache.enums.hash.Hash_func_type;
 import io.mycat.jcache.hash.Hash;
 import io.mycat.jcache.hash.Hash_init;
-import io.mycat.jcache.hash.Hash_func_type;
 import io.mycat.jcache.hash.impl.algorithm.Jenkins_hash;
 import io.mycat.jcache.hash.impl.algorithm.Pig_SDBM_hash;
+import io.mycat.jcache.setting.Settings;
 
 /**
  * Created by PigBrother(LZS/LZY) on 2016/12/11 18:12.
@@ -26,6 +26,7 @@ import io.mycat.jcache.hash.impl.algorithm.Pig_SDBM_hash;
  * @since 2016年12月11日
  *
  */
+@Deprecated
 public class HashImpl implements Hash_init {
 
     private Hash hash;
@@ -49,10 +50,14 @@ public class HashImpl implements Hash_init {
                 Settings.hash_algorithm="Pig_SDBM_hash";
                 hash = new Pig_SDBM_hash();
                 break;
+            default:
+            	return -1;
         }
         return 0;
     }
-
+    public HashImpl(){
+    }
+    
     public HashImpl(Hash_func_type hashfunc_type){
         hash_init(hashfunc_type);
     }

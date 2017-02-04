@@ -4,7 +4,7 @@ public enum ItemFlags {
 	ITEM_LINKED((byte)1),
 	ITEM_CAS((byte)2),
 	/* temp */
-	ITEM_SLABBED((byte)4),
+	ITEM_SLABBED((byte)4),   /* 存在于slab 中,没有被引用    */
 	/* Item was fetched at least once in its lifetime */
 	ITEM_FETCHED((byte)8),
 	/* Appended on fetch, removed on LRU shuffling */

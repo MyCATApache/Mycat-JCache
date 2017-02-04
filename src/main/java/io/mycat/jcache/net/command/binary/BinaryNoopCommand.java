@@ -5,9 +5,10 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.mycat.jcache.net.command.Command;
+import io.mycat.jcache.enums.protocol.binary.ProtocolBinaryCommand;
+import io.mycat.jcache.enums.protocol.binary.ProtocolResponseStatus;
+import io.mycat.jcache.net.command.BinaryCommand;
 import io.mycat.jcache.net.conn.Connection;
-import io.mycat.jcache.net.conn.handler.BinaryProtocol;
 import io.mycat.jcache.net.conn.handler.BinaryResponseHeader;
 
 
@@ -41,7 +42,7 @@ import io.mycat.jcache.net.conn.handler.BinaryResponseHeader;
  * @author liyanjun
  *
  */
-public class BinaryNoopCommand implements Command{
+public class BinaryNoopCommand implements BinaryCommand{
 	
 	private static final Logger logger = LoggerFactory.getLogger(BinaryNoopCommand.class);
 	
@@ -54,10 +55,10 @@ public class BinaryNoopCommand implements Command{
 		
 		if (extlen == 0 && bodylen == keylen && keylen == 0) {
 			logger.info("execute command noop key");
-			BinaryResponseHeader header = buildHeader(conn.getBinaryRequestHeader(),BinaryProtocol.OPCODE_NOOP,null,null,null,0l);
+			BinaryResponseHeader header = buildHeader(conn.getBinaryRequestHeader(),ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_NOOP.getByte(),null,null,null,0l);
 			writeResponse(conn,header,null,null,null);
 		} else {
-			writeResponse(conn, BinaryProtocol.OPCODE_NOOP, ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_EINVAL.getStatus(), 0L);
+			writeResponse(conn,ProtocolBinaryCommand.PROTOCOL_BINARY_CMD_NOOP.getByte(), ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_EINVAL.getStatus(), 0L);
 		}
 	}
 }
