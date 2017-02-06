@@ -111,7 +111,7 @@ public class ItemsImpl implements Items{
 		}
 		
 //		JcacheContext.getSlabPool().
-		if(Settings.verbose >= 2){
+		if(logger.isDebugEnabled()){
 			logger.debug(" before "+SlabClassUtil.SlabClassToString(JcacheContext.getSlabPool().getSlabClass(clsid)));
 		}
 

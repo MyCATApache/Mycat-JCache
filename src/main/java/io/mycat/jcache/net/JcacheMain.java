@@ -74,9 +74,6 @@ public class JcacheMain
     	
     	/* process arguments */
         if(args.length > 0){
-        	for(int i = 0;i<args.length;i++){
-        		System.out.println("args["+i+"] = " + args[i]);
-        	}
         	initGlobalConfig(args);
         }
     	
@@ -200,7 +197,7 @@ public class JcacheMain
         
         Segment segment = new Segment(power);
         JcacheContext.setSegment(segment);
-        JcacheContext.setExecutor(Executors.newWorkStealingPool(Settings.numThreads));
+        JcacheContext.setExecutor(Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()));
     }
     
     /**

@@ -58,7 +58,7 @@ public class ItemUtil {
 	
 	private static AtomicLong cas_id = new AtomicLong(0);
 	
-	private static long REALTIME_MAXDELTA = 60*60*24*30*1000L;
+	public static long REALTIME_MAXDELTA = 60*60*24*30*1000L;
 
 
 	////////////////////////////////// header begin ////////////////////////////////////////////////
@@ -377,6 +377,9 @@ public class ItemUtil {
 	 */
 	public static byte[] getValue(long addr){
 		int length = getNbytes(addr)-2; //  value 最后两位为 \r\n 获取时 ，不包含这两位
+		if(length<0){
+			length = 0;
+		}
 		byte[] data = new byte[length];
 		UnSafeUtil.getBytes(ITEM_data(addr), data,0,length); 
 		return data;

@@ -17,8 +17,8 @@ import io.mycat.jcache.net.conn.Connection;
 public class BinaryIOHandler2 implements IOHandler{ 
 
 	@Override
-	public void doReadHandler(Connection conn) throws IOException {
-		Command command = null;
+	public boolean doReadHandler(Connection conn) throws IOException {
+		BinaryCommand command = null;
 		final ByteBuffer readbuffer = conn.getReadDataBuffer();
 		int offset = readbuffer.position();
     	int limit  = readbuffer.limit();
@@ -29,14 +29,14 @@ public class BinaryIOHandler2 implements IOHandler{
     			logger.debug("C#{}B#{} validate protocol packet header: too short, ready to handle next the read event offset{},limit{}",
     				conn.getId(), readbuffer.hashCode(),offset,limit);
     			readbuffer.compact();
-    			return; 
+    			return false; 
     		}
     		int length = getPacketLength(readbuffer,offset);
     		if((length + offset)> limit) {
     			logger.debug("C#{}B#{} nNot a whole packet: required length = {} bytes, cur total length = {} bytes, "
     			 	+ "ready to handle the next read event", conn.getId(), readbuffer.hashCode(), length, limit);
     			readbuffer.compact();
-    			return;
+    			return false;
     		}
     		
     		/**
@@ -51,7 +51,7 @@ public class BinaryIOHandler2 implements IOHandler{
     	    	BinaryCommand.writeResponseError(conn, 
     	        						   conn.getBinaryRequestHeader().getOpcode(),
     	        						   ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_UNKNOWN_COMMAND.getStatus());
-    	        return;
+    	        return true;
     	    }
     	    
 //          TODO    	    
@@ -64,7 +64,7 @@ public class BinaryIOHandler2 implements IOHandler{
     	    	BinaryCommand.writeResponseError(conn, 
 						   conn.getBinaryRequestHeader().getOpcode(),
 						   ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_EINVAL.getStatus());
-    			return;
+    			return true;
     	    }
     	    byte opcode = conn.getBinaryRequestHeader().getOpcode();
     		//执行命令
@@ -81,6 +81,7 @@ public class BinaryIOHandler2 implements IOHandler{
     		readbuffer.position(offset);
     	}
     	readbuffer.clear();
+    	return true;
 	}
 
 	/**

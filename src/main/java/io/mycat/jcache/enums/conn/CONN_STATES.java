@@ -8,6 +8,7 @@ public enum CONN_STATES {
     conn_new_cmd,    /**< Prepare connection for next command */
     conn_waiting,    /**< waiting for a readable socket */
     conn_read,       /**< reading in a command line */
+    conn_nread,      /**< reading in a fixed number of bytes */
     conn_parse_cmd,  /**< try to parse a command from the input buffer */
     conn_write,      /**< writing out a simple response */
     conn_swallow,    /**< swallowing unnecessary bytes w/o storing */

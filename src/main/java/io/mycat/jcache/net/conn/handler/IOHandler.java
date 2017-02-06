@@ -18,23 +18,6 @@ public interface IOHandler{
 		logger.debug("onConnected(): {}", conn);
 	}
 
-	public void doReadHandler(Connection conn) throws IOException;
-	
-//	logger.debug("handleReadEvent(): {}", this);
-//    final ByteBuffer buffer = conn.getReadDataBuffer();
-//
-//    if(Protocol.negotiating.equals(McacheGlobalConfig.prot)){
-//    	byte magic = buffer.get(0);
-//    	if((magic & 0xff)==(BinaryProtocol.MAGIC_REQ & 0xff)){
-//    		conn.setProtocol(Protocol.binary);
-//    	}else{
-//    		conn.setProtocol(Protocol.ascii);
-//    	}
-//    } 
-//    if(Protocol.binary.equals(conn.getProtocol())){ // 如果是二进制协议
-//    	binaryHandler(conn,buffer);
-//    }else{  //如果是文本协议
-//    	asciiHandler(conn,buffer);
-//    }
+	public boolean doReadHandler(Connection conn) throws IOException;
 
 }

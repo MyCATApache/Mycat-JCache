@@ -60,12 +60,10 @@ public class BinaryFlushCommand implements BinaryCommand{
 		
 		ByteBuffer extras = readExtras(conn);
 		
-		long exptime = extras.capacity()>0?extras.getInt(4):0;
+		long exptime = extras.limit()>0?extras.getInt(4):0;
 		
 		exptime = exptime * 1000L + System.currentTimeMillis();
-		
-		System.out.println(exptime);
-		
+				
 		if(exptime > 0){
 			new_oldest = ItemUtil.realtime(exptime);
 		}else{
