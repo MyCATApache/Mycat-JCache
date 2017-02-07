@@ -2,13 +2,19 @@ package io.mycat.jcache.net.conn.handler;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import io.mycat.jcache.context.JcacheContext;
+import io.mycat.jcache.enums.DELTA_RESULT_TYPE;
 import io.mycat.jcache.enums.Store_item_type;
 import io.mycat.jcache.enums.conn.CONN_STATES;
+import io.mycat.jcache.enums.protocol.binary.ProtocolResponseStatus;
 import io.mycat.jcache.net.JcacheGlobalConfig;
 import io.mycat.jcache.net.command.Command;
+import io.mycat.jcache.net.command.CommandType;
 import io.mycat.jcache.net.conn.Connection;
+import io.mycat.jcache.util.BytesUtil;
 import io.mycat.jcache.util.ItemUtil;
 import io.mycat.jcache.util.UnSafeUtil;
 
@@ -36,8 +42,19 @@ public class AsciiIOHanlder implements IOHandler {
 	private static ByteBuffer baddatachunk = ByteBuffer.wrap("CLIENT_ERROR bad data chunk.\r\nJcache>".getBytes());
 	
 	private static ByteBuffer END = ByteBuffer.wrap("END\r\nJcache>".getBytes());
-
 	
+	private static ByteBuffer DELETED = ByteBuffer.wrap("DELETED\r\nJcache>".getBytes());
+	
+	private static ByteBuffer INVALID_NUM = ByteBuffer.wrap("CLIENT_ERROR invalid numeric delta argument\r\nJcache>".getBytes());
+
+	private static ByteBuffer NON_NUM = ByteBuffer.wrap("CLIENT_ERROR cannot increment or decrement non-numeric value\r\nJcache>".getBytes());
+	
+	private static ByteBuffer outofmemory1 = ByteBuffer.wrap("SERVER_ERROR out of memory\r\nJcache>".getBytes());
+	
+	private static ByteBuffer INVALID_EXP = ByteBuffer.wrap("CLIENT_ERROR invalid exptime argument\r\nJcache>".getBytes());
+	
+	private static ByteBuffer TOUCHED = ByteBuffer.wrap("TOUCHED\r\nJcache>".getBytes());
+
 	/**
 	 * 文本协议处理
 	 * TODO 编码/解码部分接口化，公用化  处理
@@ -111,7 +128,7 @@ public class AsciiIOHanlder implements IOHandler {
 	 * @param conn
 	 * @param readedLine
 	 */
-	private void process_command(Connection conn,String readedLine){
+	private void process_command(Connection conn,String readedLine)throws IOException{
 		String[] params = readedLine.split(" ");
 		int len = params.length;
 		int comm = 0;
@@ -130,9 +147,135 @@ public class AsciiIOHanlder implements IOHandler {
 				process_update_command(conn,params,comm,false);
 		}else if((len==6||len==7)&&params[0].equals("cas")&&(comm = Command.NREAD_CAS)>0){
 				process_update_command(conn,params,comm,true);
+		}else if(len>=2&&len<=4&&"delete".equals(params[0])){
+			process_delete_command(conn,params);
+		}else if((len==3||len==4)&&"incr".equals(params[0])){
+			process_arithmetic_command(conn,params,true);
+		}else if((len==3||len==4)&&"decr".equals(params[0])){
+			process_arithmetic_command(conn,params,false);
+		}else if((len==3||len==4)&&"touch".equals(params[0])){
+			process_touch_command(conn,params);
+		}else if(len == 1&&"version".equals(params[0])){
+			out_string(conn,ByteBuffer.wrap(("VERSION "+JcacheGlobalConfig.version).getBytes()));
+			conn.setWrite_and_go(CONN_STATES.conn_write);
+		}else if(len ==1 &&"quit".equals(params[0])){
+			conn.setWrite_and_go(CONN_STATES.conn_closing);
 		}else{
 			out_string(conn, ERROR);
+			conn.setWrite_and_go(CONN_STATES.conn_write);
 		}
+	}
+	
+	private void process_touch_command(Connection conn,String[] params)throws IOException{
+		String key = params[1];
+		int nkey = key.length();
+		long exptime = 0;
+		long it;
+		if(nkey > JcacheGlobalConfig.KEY_MAX_LENGTH){
+			out_string(conn,badformat);
+			return;
+		}
+		
+		Pattern pattern = Pattern.compile("[0-9]*");
+		Matcher isNum = pattern.matcher(params[2]);
+		if(!isNum.matches()){
+			out_string(conn, INVALID_EXP);
+			return;
+		}
+		
+		exptime = Long.parseLong(params[2])*1000L+System.currentTimeMillis();
+		it = JcacheContext.getItemsAccessManager().item_touch(key, nkey, exptime, conn);
+		if(it>0){
+			JcacheContext.getItemsAccessManager().item_update(it);
+//	        pthread_mutex_lock(&c->thread->stats.mutex);
+//	        c->thread->stats.touch_cmds++;
+//	        c->thread->stats.slab_stats[ITEM_clsid(it)].touch_hits++;
+//	        pthread_mutex_unlock(&c->thread->stats.mutex);
+			out_string(conn,TOUCHED);
+			JcacheContext.getItemsAccessManager().item_remove(it);
+		}else{
+//	        pthread_mutex_lock(&c->thread->stats.mutex);
+//	        c->thread->stats.touch_cmds++;
+//	        c->thread->stats.touch_misses++;
+//	        pthread_mutex_unlock(&c->thread->stats.mutex);
+			out_string(conn,NOT_FOUND);
+		}
+		conn.setWrite_and_go(CONN_STATES.conn_write);
+	}
+	
+	private void process_arithmetic_command(Connection conn,String[] params,boolean flag)throws IOException{
+		String key = params[1];
+		int nkey = key.length();
+		byte[] tmpbuf = new byte[8];
+		if(nkey > JcacheGlobalConfig.KEY_MAX_LENGTH){
+			out_string(conn,badformat);
+			return;
+		}
+		Pattern pattern = Pattern.compile("[0-9]*");
+		Matcher isNum = pattern.matcher(params[2]);
+		if(!isNum.matches()){
+			out_string(conn, INVALID_NUM);
+			return;
+		}
+		JcacheContext.setLocal("cas", 0L);
+		DELTA_RESULT_TYPE result = JcacheContext.getItemsAccessManager().add_delta(conn, key, nkey,
+														flag,
+														Long.parseLong(params[2]), 
+														tmpbuf);
+		switch(result){
+		case OK:
+			out_string(conn,ByteBuffer.wrap((BytesUtil.BytesToLong(tmpbuf)+"\r\nJCache>").getBytes()));
+			break;
+		case NON_NUMERIC:
+			out_string(conn,NON_NUM);
+			break;
+		case EOM:
+			out_string(conn,outofmemory1);
+			break;
+		case DELTA_ITEM_NOT_FOUND:
+//	        pthread_mutex_lock(&c->thread->stats.mutex);
+//	        if (incr) {
+//	            c->thread->stats.incr_misses++;
+//	        } else {
+//	            c->thread->stats.decr_misses++;
+//	        }
+//	        pthread_mutex_unlock(&c->thread->stats.mutex);
+			out_string(conn,NOT_FOUND);
+			break;
+		case DELTA_ITEM_CAS_MISMATCH:
+			/* Should never get here */
+			break;
+		default:
+			break;
+		}
+		conn.setWrite_and_go(CONN_STATES.conn_write);
+	}
+	
+	private void process_delete_command(Connection conn,String[] params){
+		String key;
+		int nkey;
+		long it;
+		key = params[1];
+		nkey = key.length();
+		if(nkey > JcacheGlobalConfig.KEY_MAX_LENGTH){
+			out_string(conn,badformat);
+			return;
+		}
+		
+//	    if (settings.detail_enabled) {
+//	        stats_prefix_record_delete(key, nkey);
+//	    }
+		
+		it = JcacheContext.getItemsAccessManager().item_get(key, nkey, conn);
+		
+		if(it>0){
+			JcacheContext.getItemsAccessManager().item_unlink(it);
+			JcacheContext.getItemsAccessManager().item_remove(it);
+			out_string(conn,DELETED);
+		}else{
+			out_string(conn,NOT_FOUND);
+		}
+		conn.setWrite_and_go(CONN_STATES.conn_write);
 	}
 	
 	private void process_get_command(Connection conn,String[] params,boolean return_cas){
@@ -190,7 +333,9 @@ public class AsciiIOHanlder implements IOHandler {
 		int vlen = Integer.parseInt(params[4]);
 		
 		if(exptime<0){
-			exptime = ItemUtil.REALTIME_MAXDELTA +1000;
+			exptime = ItemUtil.REALTIME_MAXDELTA +1000 + System.currentTimeMillis();
+		}else{
+			exptime = exptime>0?(exptime * 1000l + System.currentTimeMillis()):0;
 		}
 		
 		if(handle_cas){
