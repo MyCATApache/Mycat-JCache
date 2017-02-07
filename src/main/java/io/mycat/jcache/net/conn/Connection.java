@@ -7,7 +7,9 @@ import java.nio.channels.CancelledKeyException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -59,7 +61,6 @@ public class Connection implements Closeable, Runnable {
     private boolean noreply; /* True if the reply should not be sent. */
     private long item;
     private int rlbytes;/* how many bytes to swallow */  
-    
     
     /**
      * 二进制请求头

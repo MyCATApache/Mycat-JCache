@@ -21,17 +21,21 @@ public class AsciiIOHanlder implements IOHandler {
 	
 	private static ByteBuffer outofmemory = ByteBuffer.wrap("SERVER_ERROR out of memory storing object \r\n>".getBytes());
 	
-	private static ByteBuffer STORED = ByteBuffer.wrap("STORED\r\n>".getBytes());
+	private static ByteBuffer STORED = ByteBuffer.wrap("STORED\r\nJcache>".getBytes());
 	
-	private static ByteBuffer EXISTS = ByteBuffer.wrap("EXISTS\r\n>".getBytes());
+	private static ByteBuffer EXISTS = ByteBuffer.wrap("EXISTS\r\nJcache>".getBytes());
 	
-	private static ByteBuffer NOT_FOUND = ByteBuffer.wrap("NOT_FOUND\r\n>".getBytes());
+	private static ByteBuffer NOT_FOUND = ByteBuffer.wrap("NOT_FOUND\r\nJcache>".getBytes());
 	
-	private static ByteBuffer NOT_STORED = ByteBuffer.wrap("NOT_STORED\r\n>".getBytes());
+	private static ByteBuffer ERROR = ByteBuffer.wrap("ERROR\r\nJcache>".getBytes());
 	
-	private static ByteBuffer UnhandledType = ByteBuffer.wrap("SERVER_ERROR Unhandled storage type.\r\n>".getBytes());
+	private static ByteBuffer NOT_STORED = ByteBuffer.wrap("NOT_STORED\r\nJcache>".getBytes());
 	
-	private static ByteBuffer baddatachunk = ByteBuffer.wrap("CLIENT_ERROR bad data chunk.\r\n>".getBytes());
+	private static ByteBuffer UnhandledType = ByteBuffer.wrap("SERVER_ERROR Unhandled storage type.\r\nJcache>".getBytes());
+	
+	private static ByteBuffer baddatachunk = ByteBuffer.wrap("CLIENT_ERROR bad data chunk.\r\nJcache>".getBytes());
+	
+	private static ByteBuffer END = ByteBuffer.wrap("END\r\nJcache>".getBytes());
 
 	
 	/**
@@ -48,70 +52,57 @@ public class AsciiIOHanlder implements IOHandler {
 		int readEndPos = conn.getLastMessagePos();
 		int limit = readBuffer.position();
 		String readedLine = null;
-		for (int i = readEndPos; i < limit; i++) {
+		for (int i = readEndPos; i < limit&&conn.getLastMessagePos() < limit; i++) {
 			// System.out.println(readBuffer.get(i));
 			if (readBuffer.get(i) == 13) {// a line finished
-				byte[] lineBytes = new byte[i - readEndPos];
+				int readlimit = i - readEndPos;
+				byte[] lineBytes = new byte[readlimit];
 				readBuffer.position(readEndPos);
 				readBuffer.get(lineBytes);
-				readEndPos = i;
+				readlimit += 2;
+				readBuffer.position(readlimit+conn.getLastMessagePos());
 				readedLine = new String(lineBytes);
-				System.out.println("received line ,lenth:" + readedLine.length() + " value " + readedLine);
+				conn.disableRead();
+				if(CONN_STATES.conn_nread.equals(conn.getState())){
+					doReadValue(conn,readedLine);
+				}else{
+					process_command(conn,readedLine);
+					conn.setLastMessagePos(readlimit);
+				}
 				break;
 			}
-		}
-		
-		if (readedLine != null) {
-			// 取消读事件关注，因为要应答数据
-			conn.disableRead();
-//			String response = "read ascii command :"+ readedLine;
-			
-//			ByteBuffer writeBuffer = ByteBuffer.wrap(response.getBytes());
-//			conn.addWriteQueue(writeBuffer);
-//			conn.enableWrite(true);
-			if(CONN_STATES.conn_nread.equals(conn.getState())){
-				doReadValue(conn);
-			}else{
-				process_command(conn,readedLine);
-				conn.setLastMessagePos(limit);
-			}
-			return true;
 		}
 		return false;
 	}
 	
-	public void doReadValue(Connection conn) throws IOException{
+	public void doReadValue(Connection conn,String value) throws IOException{
 		ByteBuffer readBuffer = conn.getReadDataBuffer();
 		Store_item_type ret;
-		if(readBuffer.array()[readBuffer.position()] == 13){
-			if(conn.getRlbytes()!= (readBuffer.position()-conn.getLastMessagePos())){
-				out_string(conn, baddatachunk);
-			}else{
-				byte[] value = new byte[readBuffer.position()];
-				readBuffer.get(value, 0, readBuffer.position());
-				ItemUtil.setValue(conn.getItem(), value);
-				ret = JcacheContext.getItemsAccessManager().store_item(conn.getItem(), conn);
-				
-				switch(ret){
-				case STORED:
-					out_string(conn, STORED);
-					break;
-				case EXISTS:
-					out_string(conn, EXISTS);
-					break;
-				case NOT_FOUND:
-					out_string(conn, NOT_FOUND);
-					break;
-				case NOT_STORED:
-					out_string(conn, NOT_STORED);
-					break;
-				default:
-					out_string(conn, UnhandledType);
-				}
+		if(conn.getRlbytes()!= (readBuffer.position()-conn.getLastMessagePos()-2)){
+			out_string(conn, baddatachunk);
+		}else{
+			ItemUtil.setValue(conn.getItem(), value.getBytes(JcacheGlobalConfig.defaultCahrset));
+			ret = JcacheContext.getItemsAccessManager().store_item(conn.getItem(), conn);
+			
+			switch(ret){
+			case STORED:
+				out_string(conn, STORED);
+				break;
+			case EXISTS:
+				out_string(conn, EXISTS);
+				break;
+			case NOT_FOUND:
+				out_string(conn, NOT_FOUND);
+				break;
+			case NOT_STORED:
+				out_string(conn, NOT_STORED);
+				break;
+			default:
+				out_string(conn, UnhandledType);
 			}
-			JcacheContext.getItemsAccessManager().item_remove(conn.getItem());
-			conn.setItem(0);
 		}
+		JcacheContext.getItemsAccessManager().item_remove(conn.getItem());
+		conn.setItem(0);
 	}
 	
 	/**
@@ -124,23 +115,63 @@ public class AsciiIOHanlder implements IOHandler {
 		String[] params = readedLine.split(" ");
 		int len = params.length;
 		int comm = 0;
-		if(len>=3&&(params[0].equals("get")
+		if(len>=2&&(params[0].equals("get")
 					||params[0].equals("bget"))){
 			process_get_command(conn,params,false);
-		}else if((len==5||len==6)){
-			if(params[0].equals("add")) comm = Command.NREAD_ADD;
-			if(params[0].equals("set")) comm = Command.NREAD_SET;
-			if(params[0].equals("replace")) comm = Command.NREAD_REPLACE;
-			if(params[0].equals("prepend")) comm = Command.NREAD_PREPEND;
-			if(params[0].equals("append")) comm = Command.NREAD_APPEND;
-			if(comm>0){
+		}else if(len>=2&&params[0].equals("gets")){
+			process_get_command(conn,params,true);
+		}else if((len==5||len==6)&&(
+				(params[0].equals("add")&&(comm = Command.NREAD_ADD)>0)||
+				(params[0].equals("set")&&(comm = Command.NREAD_SET)>0)||
+				(params[0].equals("replace")&&(comm = Command.NREAD_REPLACE)>0)||
+				(params[0].equals("prepend")&&(comm = Command.NREAD_PREPEND)>0)||
+				(params[0].equals("append")&&(comm = Command.NREAD_APPEND)>0)
+				)){
 				process_update_command(conn,params,comm,false);
-			}
+		}else if((len==6||len==7)&&params[0].equals("cas")&&(comm = Command.NREAD_CAS)>0){
+				process_update_command(conn,params,comm,true);
+		}else{
+			out_string(conn, ERROR);
 		}
 	}
 	
 	private void process_get_command(Connection conn,String[] params,boolean return_cas){
+		String key;
+		int nkey;
+		long it;
 		
+		for(int i=1;i<params.length;i++){
+			key = params[i];
+			nkey = key.length();
+			
+			if(nkey > JcacheGlobalConfig.KEY_MAX_LENGTH){
+				out_string(conn,badformat);
+				return;
+			}
+			
+			it = JcacheContext.getItemsAccessManager().item_get(key, nkey, conn);  //refcount ++;
+//            if (settings.detail_enabled) {
+//                stats_prefix_record_get(key, nkey, NULL != it);
+//            }
+			if(it>0){
+				StringBuilder result = new StringBuilder();
+				result.append("VALUE ")
+				.append(ItemUtil.getKey(it))
+				.append(new String(ItemUtil.getSuffix(it)));
+				
+				if(return_cas){
+					result.append(" ").append(ItemUtil.getCAS(it));
+				}
+				result.append("\r\n")
+				.append(new String(ItemUtil.getValue(it))).append("\r\n");
+				addWriteQueue(conn,ByteBuffer.wrap(result.toString().getBytes()));
+				JcacheContext.getItemsAccessManager().item_remove(it);  //refcount --;
+				JcacheContext.getItemsAccessManager().item_update(it);  // 更新 最近访问时间
+			}
+		}
+		
+		addWriteQueue(conn,END);
+		conn.setWrite_and_go(CONN_STATES.conn_write);
 	}
 	
 	private void process_update_command(Connection conn,String[] params,int comm,boolean handle_cas){
@@ -202,6 +233,12 @@ public class AsciiIOHanlder implements IOHandler {
 		conn.setItem(it);
 		conn.setSubCmd(comm);
 		conn.setWrite_and_go(CONN_STATES.conn_nread);
+	}
+	
+	private void addWriteQueue(Connection conn,ByteBuffer badformat){
+		ByteBuffer formet = badformat.slice();
+		formet.position(formet.limit());
+		conn.addWriteQueue(formet);
 	}
 	
 	private void out_string(Connection conn,ByteBuffer badformat){

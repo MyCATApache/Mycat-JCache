@@ -307,30 +307,36 @@ public class ItemsAccessManager {
 	         * atomic and thread-safe.
 	         */
 			if(conn.getSubCmd()==Command.NREAD_APPEND||conn.getSubCmd()==Command.NREAD_PREPEND){
-				/*
-	             * Validate CAS
-	             */
-				if(ItemUtil.ITEM_get_cas(addr)!=0){
-					if(ItemUtil.ITEM_get_cas(addr)!=ItemUtil.ITEM_get_cas(oldaddr)){
-						stored = Store_item_type.EXISTS;
-					}
-				}
 				
-				if(stored.equals(Store_item_type.NOT_STORED)){
-					/* we have it and old_it here - alloc memory to hold both */
-	                /* flags was already lost - so recover them from ITEM_suffix(it) */
-					flags = ItemUtil.ITEM_suffix_flags(oldaddr);
-					new_it = items.do_item_alloc(key, nkey, flags, 
-												 ItemUtil.getExpTime(oldaddr), 
-												 (ItemUtil.getNbytes(addr)+ItemUtil.getNbytes(oldaddr)-2));
-					if(new_it==0){
-						failed_alloc = 1;
-						stored = Store_item_type.NOT_STORED;
-					}else{
-						 /* copy data from it and old_it to new_it */
-	                    _store_item_copy_data(conn, oldaddr, new_it, addr);
-						addr = new_it;
+				if(oldaddr!=0){
+					/*
+		             * Validate CAS
+		             */
+					if(ItemUtil.ITEM_get_cas(addr)!=0){
+						if(ItemUtil.ITEM_get_cas(addr)!=ItemUtil.ITEM_get_cas(oldaddr)){
+							stored = Store_item_type.EXISTS;
+						}
 					}
+					
+					if(stored.equals(Store_item_type.NOT_STORED)){
+						/* we have it and old_it here - alloc memory to hold both */
+		                /* flags was already lost - so recover them from ITEM_suffix(it) */
+						flags = ItemUtil.ITEM_suffix_flags(oldaddr);
+						new_it = items.do_item_alloc(key, nkey, flags, 
+													 ItemUtil.getExpTime(oldaddr), 
+													 (ItemUtil.getNbytes(addr)+ItemUtil.getNbytes(oldaddr)-2));
+						if(new_it==0){
+							failed_alloc = 1;
+							stored = Store_item_type.NOT_STORED;
+						}else{
+							 /* copy data from it and old_it to new_it */
+		                    _store_item_copy_data(conn, oldaddr, new_it, addr);
+							addr = new_it;
+						}
+					}
+				}else{
+					failed_alloc = 1;
+					stored = Store_item_type.NOT_STORED;
 				}
 			}
 			
