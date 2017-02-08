@@ -27,33 +27,33 @@ public class AsciiIOHanlder implements IOHandler {
 	
 	private static ByteBuffer outofmemory = ByteBuffer.wrap("SERVER_ERROR out of memory storing object \r\n>".getBytes());
 	
-	private static ByteBuffer STORED = ByteBuffer.wrap("STORED\r\nJcache>".getBytes());
+	private static ByteBuffer STORED = ByteBuffer.wrap("STORED\r\n".getBytes());
 	
-	private static ByteBuffer EXISTS = ByteBuffer.wrap("EXISTS\r\nJcache>".getBytes());
+	private static ByteBuffer EXISTS = ByteBuffer.wrap("EXISTS\r\n".getBytes());
 	
-	private static ByteBuffer NOT_FOUND = ByteBuffer.wrap("NOT_FOUND\r\nJcache>".getBytes());
+	private static ByteBuffer NOT_FOUND = ByteBuffer.wrap("NOT_FOUND\r\n".getBytes());
 	
-	private static ByteBuffer ERROR = ByteBuffer.wrap("ERROR\r\nJcache>".getBytes());
+	private static ByteBuffer ERROR = ByteBuffer.wrap("ERROR\r\n".getBytes());
 	
-	private static ByteBuffer NOT_STORED = ByteBuffer.wrap("NOT_STORED\r\nJcache>".getBytes());
+	private static ByteBuffer NOT_STORED = ByteBuffer.wrap("NOT_STORED\r\n".getBytes());
 	
-	private static ByteBuffer UnhandledType = ByteBuffer.wrap("SERVER_ERROR Unhandled storage type.\r\nJcache>".getBytes());
+	private static ByteBuffer UnhandledType = ByteBuffer.wrap("SERVER_ERROR Unhandled storage type.\r\n".getBytes());
 	
-	private static ByteBuffer baddatachunk = ByteBuffer.wrap("CLIENT_ERROR bad data chunk.\r\nJcache>".getBytes());
+	private static ByteBuffer baddatachunk = ByteBuffer.wrap("CLIENT_ERROR bad data chunk.\r\n".getBytes());
 	
-	private static ByteBuffer END = ByteBuffer.wrap("END\r\nJcache>".getBytes());
+	private static ByteBuffer END = ByteBuffer.wrap("END\r\n".getBytes());
 	
-	private static ByteBuffer DELETED = ByteBuffer.wrap("DELETED\r\nJcache>".getBytes());
+	private static ByteBuffer DELETED = ByteBuffer.wrap("DELETED\r\n".getBytes());
 	
-	private static ByteBuffer INVALID_NUM = ByteBuffer.wrap("CLIENT_ERROR invalid numeric delta argument\r\nJcache>".getBytes());
+	private static ByteBuffer INVALID_NUM = ByteBuffer.wrap("CLIENT_ERROR invalid numeric delta argument\r\n".getBytes());
 
-	private static ByteBuffer NON_NUM = ByteBuffer.wrap("CLIENT_ERROR cannot increment or decrement non-numeric value\r\nJcache>".getBytes());
+	private static ByteBuffer NON_NUM = ByteBuffer.wrap("CLIENT_ERROR cannot increment or decrement non-numeric value\r\n".getBytes());
 	
-	private static ByteBuffer outofmemory1 = ByteBuffer.wrap("SERVER_ERROR out of memory\r\nJcache>".getBytes());
+	private static ByteBuffer outofmemory1 = ByteBuffer.wrap("SERVER_ERROR out of memory\r\n".getBytes());
 	
-	private static ByteBuffer INVALID_EXP = ByteBuffer.wrap("CLIENT_ERROR invalid exptime argument\r\nJcache>".getBytes());
+	private static ByteBuffer INVALID_EXP = ByteBuffer.wrap("CLIENT_ERROR invalid exptime argument\r\n".getBytes());
 	
-	private static ByteBuffer TOUCHED = ByteBuffer.wrap("TOUCHED\r\nJcache>".getBytes());
+	private static ByteBuffer TOUCHED = ByteBuffer.wrap("TOUCHED\r\n".getBytes());
 
 	/**
 	 * 文本协议处理
@@ -69,27 +69,33 @@ public class AsciiIOHanlder implements IOHandler {
 		int readEndPos = conn.getLastMessagePos();
 		int limit = readBuffer.position();
 		String readedLine = null;
+		int lastPos = 0;
+		boolean hasprocess = false;
 		for (int i = readEndPos; i < limit&&conn.getLastMessagePos() < limit; i++) {
 			// System.out.println(readBuffer.get(i));
 			if (readBuffer.get(i) == 13) {// a line finished
-				int readlimit = i - readEndPos;
+				int readlimit = i - readEndPos - lastPos;
 				byte[] lineBytes = new byte[readlimit];
-				readBuffer.position(readEndPos);
+				readBuffer.position(readEndPos+lastPos);
 				readBuffer.get(lineBytes);
 				readlimit += 2;
-				readBuffer.position(readlimit+conn.getLastMessagePos());
+				lastPos = readlimit+conn.getLastMessagePos();
+				readBuffer.position(lastPos);
 				readedLine = new String(lineBytes);
-				conn.disableRead();
-				if(CONN_STATES.conn_nread.equals(conn.getState())){
+				if(conn.getItem()>0){
 					doReadValue(conn,readedLine);
 				}else{
 					process_command(conn,readedLine);
-					conn.setLastMessagePos(readlimit);
 				}
-				break;
+				conn.setLastMessagePos(readlimit);
+				hasprocess = true;
 			}
 		}
-		return false;
+		
+		if(!hasprocess){
+			conn.setWrite_and_go(CONN_STATES.conn_nread);
+		}
+		return true;
 	}
 	
 	public void doReadValue(Connection conn,String value) throws IOException{
@@ -120,6 +126,7 @@ public class AsciiIOHanlder implements IOHandler {
 		}
 		JcacheContext.getItemsAccessManager().item_remove(conn.getItem());
 		conn.setItem(0);
+		conn.setWrite_and_go(CONN_STATES.conn_write);
 	}
 	
 	/**
@@ -129,7 +136,7 @@ public class AsciiIOHanlder implements IOHandler {
 	 * @param readedLine
 	 */
 	private void process_command(Connection conn,String readedLine)throws IOException{
-		String[] params = readedLine.split(" ");
+		String[] params = readedLine.split("\\s+");
 		int len = params.length;
 		int comm = 0;
 		if(len>=2&&(params[0].equals("get")
@@ -224,7 +231,7 @@ public class AsciiIOHanlder implements IOHandler {
 														tmpbuf);
 		switch(result){
 		case OK:
-			out_string(conn,ByteBuffer.wrap((BytesUtil.BytesToLong(tmpbuf)+"\r\nJCache>").getBytes()));
+			out_string(conn,ByteBuffer.wrap((BytesUtil.BytesToLong(tmpbuf)+"\r\n").getBytes()));
 			break;
 		case NON_NUMERIC:
 			out_string(conn,NON_NUM);

@@ -229,7 +229,7 @@ public class JcacheMain
     	String[] commandLineparams = tmpparams.split("-");
     	
     	IntStream.range(0, commandLineparams.length).forEach(i->{
-    		String[] params = commandLineparams[i].split(" ");
+    		String[] params = commandLineparams[i].split("\\s+");
     		switch (params[0]) {
     		case "":
     			break;
