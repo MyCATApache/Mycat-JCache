@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.mycat</groupId>
   <artifactId>Mycat-jcache</artifactId>
-  <version>0.5</version>
+  <version>1.0</version>
   <packaging>jar</packaging>
   <name>JCache</name>
   <properties>
