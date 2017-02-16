@@ -7,7 +7,9 @@ import java.nio.channels.CancelledKeyException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -41,6 +43,7 @@ public class Connection implements Closeable, Runnable {
     protected final SocketChannel channel;
     private ByteBuffer writeBuffer;  //写缓冲区 
     protected ByteBuffer readBuffer; /* 读缓冲区  默认 2048 会扩容    */
+    private int lastMessagePos; // readBuffer 最后读取位置
     
     private LinkedList<ByteBuffer> writeQueue = new LinkedList<ByteBuffer>();
     private AtomicBoolean writingFlag = new AtomicBoolean(false);
@@ -57,8 +60,7 @@ public class Connection implements Closeable, Runnable {
     private BIN_SUBSTATES substate;
     private boolean noreply; /* True if the reply should not be sent. */
     private long item;
-    
-    
+    private int rlbytes;/* how many bytes to swallow */  
     
     /**
      * 二进制请求头
@@ -82,6 +84,8 @@ public class Connection implements Closeable, Runnable {
         if (ioHandler != null) {
             ioHandler.onConnected(this);
         }
+//        writeBuffer.put("Welcome Mycat-JCache ...\r\nJCache>".getBytes());
+//        enableWrite(true);
     }
 
     @Override
@@ -98,6 +102,24 @@ public class Connection implements Closeable, Runnable {
     	    		   selectionKey.interestOps(selectionKey.interestOps() | SelectionKey.OP_READ);
     	    		   state = CONN_STATES.conn_read;
     	    		   stop = true;
+    	    		   break;
+    	    	   case conn_nread:  //  文本命令 telnet 会进入到该状态
+    	    		   selectionKey.interestOps(selectionKey.interestOps() | SelectionKey.OP_READ);
+    	    		   res = try_read_network();
+    	    		   switch(res){
+	    	    		   case READ_NO_DATA_RECEIVED:
+	    	    			   stop = true;
+	    	    			   break;
+	    	    		   case READ_DATA_RECEIVED:   /* 数据读取完成,开始 处理value 部分 */
+	    	    			   ioHandler.doReadHandler(this);
+	    	    			   break;
+	    	    		   case READ_ERROR:
+	    	    			   state = CONN_STATES.conn_closing;
+	    	    			   break;
+	    	    		   case READ_MEMORY_ERROR: /* Failed to allocate more memory */
+	    	    			   /* State already set by try_read_network */
+	    	    			   break;
+    	    		   }
     	    		   break;
     	    	   case conn_read:
     	    		   res = try_read_network();
@@ -126,6 +148,8 @@ public class Connection implements Closeable, Runnable {
     	    	   case conn_swallow:
     	    		   break;
     	    	   case conn_write:
+    	    		   setLastMessagePos(0);
+    	    		   readBuffer.clear();
     	    		   asynWrite();
     	    		   state = CONN_STATES.conn_read;
     	    		   stop = true;
@@ -182,7 +206,7 @@ public class Connection implements Closeable, Runnable {
     		final int got = channel.read(readBuffer);
         	switch (got) {
             case 0: {	
-            	if (readBuffer.limit() == readBuffer.capacity()) {
+            	if (readBuffer.limit() == readBuffer.capacity()&&readBuffer.position()==readBuffer.limit()) {
             		ByteBuffer newReadBuffer;
             		int newcap = readBuffer.capacity()*2;
             		if(newcap >=Runtime.getRuntime().freeMemory()){
@@ -194,10 +218,12 @@ public class Connection implements Closeable, Runnable {
                 	newReadBuffer.position(readBuffer.position());
                 	readBuffer = newReadBuffer;
                 	newReadBuffer = null;
+                	setLastMessagePos(0);  //扩容后,重置最后一次读取位置
             	}else if (readBuffer.limit() < readBuffer.capacity()
                         && readBuffer.position() == readBuffer.limit()) {
                     readBuffer.limit(readBuffer.capacity());
                 }else{
+                	hasdata = false;
                 	godata = TRY_READ_RESULT.READ_NO_DATA_RECEIVED;
                 }
                 break;
@@ -224,55 +250,12 @@ public class Connection implements Closeable, Runnable {
     
     private boolean try_read_command() throws IOException{
         // 处理指令
-      readBuffer.flip();
+//      readBuffer.flip();
       if(Objects.equals(Settings.binding_protocol,Protocol.negotiating)){
           byte magic = readBuffer.array()[0];
           dynamicProtocol(magic);
       }
-      ioHandler.doReadHandler(this);
-      return true;
-    }
-
-    /**
-     * 
-     *
-     * @throws IOException
-     */
-    @Deprecated
-    public void asynRead() throws IOException {
-    	ByteBuffer newReadBuffer;
-        final int got = channel.read(readBuffer);
-        switch (got) {
-            case 0: {
-	            if (readBuffer.limit() == readBuffer.capacity()) {
-	            	newReadBuffer = ByteBuffer.allocate(readBuffer.capacity()*2);
-//	            	newReadBuffer.put(readBuffer.)
-	            }
-                if (readBuffer.limit() < readBuffer.capacity()
-                        && readBuffer.position() == readBuffer.limit()) {
-                    readBuffer.limit(readBuffer.capacity());
-                }
-                logger.info(" readBuffer pos {}, limit {}, capacity {} ", readBuffer.position(), readBuffer.limit(), readBuffer.capacity());
-//	        	close("client closed");
-                break;
-            }
-            case -1: {
-                close("client closed");
-                break;
-            }
-            default: {
-                logger.info(" read bytes {}.", got);
-                // 处理指令
-                readBuffer.flip();
-                if(Objects.equals(Settings.binding_protocol,Protocol.negotiating)){
-                	logger.info(" connection limit {},offset {}",readBuffer.limit(),readBuffer.position());
-                    byte magic = readBuffer.array()[0];
-                    dynamicProtocol(magic);
-                }
-                logger.info(" ioHandler.doReadhandler ioHandler is {} ",ioHandler);
-                ioHandler.doReadHandler(this);
-            }
-        }
+      return ioHandler.doReadHandler(this);
     }
 
     /**
@@ -359,16 +342,6 @@ public class Connection implements Closeable, Runnable {
         try {
             SelectionKey key = this.selectionKey;
             key.interestOps(key.interestOps() & ~SelectionKey.OP_WRITE);
-//            logger.warn("disable write con " + this);
-        } catch (Exception e) {
-            logger.warn("can't disable write " + e + " con " + this);
-        }
-    }
-
-    public void disableRead() {
-        try {
-            SelectionKey key = this.selectionKey;
-            key.interestOps(key.interestOps() & ~SelectionKey.OP_READ);
 //            logger.warn("disable write con " + this);
         } catch (Exception e) {
             logger.warn("can't disable write " + e + " con " + this);
@@ -519,5 +492,29 @@ public class Connection implements Closeable, Runnable {
 
 	public void setItem(long item) {
 		this.item = item;
+	}
+
+	public int getLastMessagePos() {
+		return lastMessagePos;
+	}
+
+	public void setLastMessagePos(int lastMessagePos) {
+		this.lastMessagePos = lastMessagePos;
+	}
+
+	public int getRlbytes() {
+		return rlbytes;
+	}
+
+	public void setRlbytes(int rlbytes) {
+		this.rlbytes = rlbytes;
+	}
+
+	public CONN_STATES getState() {
+		return state;
+	}
+
+	public void setState(CONN_STATES state) {
+		this.state = state;
 	}
 }

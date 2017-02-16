@@ -46,7 +46,9 @@ public class SlabClassUtil {
 	 */
 	public static String SlabClassToString(long addr){
 		return "{size="+getSize(addr)+",perslab = "+getPerslab(addr)+",sl_curr ="+getSlCurr(addr)+","
-				+"slabs= "+ getSlabs(addr) + ",list_size = "+getListSize(addr)+"}";
+				+"slabs= "+ getSlabs(addr) 
+				+ "slots="+getSlots(addr)
+				+ ",list_size = "+getListSize(addr)+"}";
 	}
 	
 	public static int getNtotal() {

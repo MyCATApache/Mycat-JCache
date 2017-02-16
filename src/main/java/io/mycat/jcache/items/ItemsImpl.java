@@ -111,7 +111,7 @@ public class ItemsImpl implements Items{
 		}
 		
 //		JcacheContext.getSlabPool().
-		if(Settings.verbose >= 2){
+		if(logger.isDebugEnabled()){
 			logger.debug(" before "+SlabClassUtil.SlabClassToString(JcacheContext.getSlabPool().getSlabClass(clsid)));
 		}
 
@@ -214,6 +214,7 @@ public class ItemsImpl implements Items{
 			ItemUtil.setExpTime(it, exptime);
 			byte[] suffixBytes = suffixStr.getBytes(JcacheGlobalConfig.defaultCahrset);
 			ItemUtil.setSuffix(it, suffixBytes);
+			ItemUtil.getSuffix(it);
 			ItemUtil.setNsuffix(it, (byte)suffixBytes.length);
 			if((flag&ItemFlags.ITEM_CHUNKED.getFlags())>0){
 				long chunk = ItemUtil.ITEM_data(it);

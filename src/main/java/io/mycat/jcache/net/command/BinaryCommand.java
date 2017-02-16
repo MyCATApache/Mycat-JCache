@@ -2,6 +2,10 @@ package io.mycat.jcache.net.command;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.mycat.jcache.context.JcacheContext;
 import io.mycat.jcache.enums.DELTA_RESULT_TYPE;
@@ -27,7 +31,13 @@ import io.mycat.jcache.util.UnSafeUtil;
  *
  */
 @SuppressWarnings("restriction")
-public interface BinaryCommand extends Command {
+public interface BinaryCommand extends Command{
+
+
+	/**
+	 * 执行命令
+	 */
+	void execute(Connection conn) throws IOException;
 	
 	/**
 	 * 获取key
@@ -41,7 +51,7 @@ public interface BinaryCommand extends Command {
 		if(header.getKeylen()>0){
 			ByteBuffer buffer = conn.getReadDataBuffer();
 			int keystart  = BinaryProtocol.memcache_packetHeaderSize+ header.getExtlen();
-			return getBytes(buffer,keystart, header.getKeylen());
+			return getBytes(buffer,conn.getLastMessagePos(),keystart, header.getKeylen());
 		}else{
 			return null;
 		}
@@ -69,7 +79,7 @@ public interface BinaryCommand extends Command {
 		int valuestart = keystart + header.getKeylen();
 		int totalBodylength = header.getBodylen();
 		int valuelength = totalBodylength - header.getExtlen() - header.getKeylen() ;
-		return getBytes(buffer,valuestart, valuelength);
+		return getBytes(buffer,conn.getLastMessagePos(),valuestart, valuelength);
 	}
 	
 	/**
@@ -80,9 +90,6 @@ public interface BinaryCommand extends Command {
 	 */
 	public default int readValueLength(Connection conn) throws IOException{
 		BinaryRequestHeader header = conn.getBinaryRequestHeader();
-		ByteBuffer buffer = conn.getReadDataBuffer();
-		int keystart  = BinaryProtocol.memcache_packetHeaderSize+ header.getExtlen() ;
-		int valuestart = keystart + header.getKeylen();
 		int totalBodylength = header.getBodylen();
 		int valuelength = totalBodylength - header.getExtlen() - header.getKeylen() ;
 		return valuelength;
@@ -97,7 +104,7 @@ public interface BinaryCommand extends Command {
 	public default ByteBuffer readExtras(Connection conn) throws IOException{
 		BinaryRequestHeader header = conn.getBinaryRequestHeader();
 		ByteBuffer buffer = conn.getReadDataBuffer();
-		return getBytes(buffer,BinaryProtocol.memcache_packetHeaderSize,header.getExtlen());
+		return getBytes(buffer,conn.getLastMessagePos(),BinaryProtocol.memcache_packetHeaderSize,header.getExtlen());
 	}
 	
 	/**
@@ -108,9 +115,9 @@ public interface BinaryCommand extends Command {
 	 * @return
 	 * @throws IOException
 	 */
-	public default ByteBuffer getBytes(ByteBuffer mapBuf,int index,int length) throws IOException {
+	public default ByteBuffer getBytes(ByteBuffer mapBuf,int start,int index,int length) throws IOException {
 		int oldPos=mapBuf.position();
-		mapBuf.position(index+ mapBuf.position());
+		mapBuf.position(index+ start);
 		ByteBuffer copyBuf=mapBuf.slice();
 		copyBuf.limit(length);
 		mapBuf.position(oldPos);
@@ -300,6 +307,9 @@ public interface BinaryCommand extends Command {
 	
 	public default void complete_update_bin(Connection conn){
 		long addr = conn.getItem();
+		if(logger.isDebugEnabled()){
+			logger.debug("item is {}",ItemUtil.ItemToString(addr));
+		}
 		ProtocolResponseStatus eno = ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_EINVAL;
 		Store_item_type ret = Store_item_type.NOT_STORED;		
 		

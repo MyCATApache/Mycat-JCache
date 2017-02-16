@@ -1,14 +1,11 @@
 package io.mycat.jcache.net.command;
 
-import java.io.IOException;
 import java.nio.charset.Charset;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.mycat.jcache.net.JcacheGlobalConfig;
-import io.mycat.jcache.net.conn.Connection;
-
 
 /**
  * 命令接口
@@ -33,10 +30,5 @@ public interface Command {
 	public final int NREAD_PREPEND = 5;
 	
 	public final int NREAD_CAS = 6;
-
-	/**
-	 * 执行命令
-	 */
-	void execute(Connection conn) throws IOException;
 
 }

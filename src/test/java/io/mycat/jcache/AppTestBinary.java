@@ -15,14 +15,12 @@ import junit.framework.Assert;
 /**
  * Unit test for simple App.
  */
-public class AppTest {
+public class AppTestBinary {
 	
 	MemCachedClient mcc = new MemCachedClient(true);  //true 代表 二进制协议，false 代表 文本协议
 	
 	@BeforeClass
     public static void setup() throws Exception{
-		String[] args = {"-m 1024"};  //启动时 指定启动参数为  1024m
-		
 		
 		// 设置缓存服务器列表，当使用分布式缓存的时，可以指定多个缓存服务器。这里应该设置为多个不同的服务，我这里将两个服务设置为一样的，大家不要向我学习，呵呵。
         String[] servers =
@@ -60,7 +58,7 @@ public class AppTest {
 	 * 测试lru 需要设置  tailRepairTime参数大于零，或者 item 过期时间,使memcached 可以删掉掉 item.
 	 * 否则,达到内存上限时,将不能够再保存新的item
 	 */
-//	@Test
+	@Test
 	public void testsetCommand1(){
 		String value = "123";
 //		for(int i=0;i<3000;i++){
@@ -69,7 +67,7 @@ public class AppTest {
 		String key = "foo0";
 		boolean result;
 		int j;
-		for(j=0;j<1;j++){
+		for(j=0;j<100;j++){
 			result = mcc.set("foo"+j, value);
 	        System.out.println(result+":"+j);
 	        Assert.assertEquals(result, true);
@@ -108,7 +106,7 @@ public class AppTest {
 	 * 
 	 * 测试 hashtable 扩容
 	 */
-//	@Test
+	@Test
 	public void testslabCommand(){
 		Random ran = new Random();
 		List<Thread> threads = new ArrayList<>();

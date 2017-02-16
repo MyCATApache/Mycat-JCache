@@ -10,6 +10,7 @@ import java.util.concurrent.LinkedTransferQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.mycat.jcache.context.JcacheContext;
 import io.mycat.jcache.net.conn.Connection;
 
 
@@ -58,7 +59,7 @@ public final class NIOReactor extends Thread{
 				{
 					Connection con = (Connection)key.attachment();
 					logger.info("select-key-readyOps = {}, attachment = {}", key.readyOps(), con);
-//					this.executor.execute(con);
+//					JcacheContext.getExecutor().execute(con);
 					con.run();
 				}
 			} catch (Throwable e) {

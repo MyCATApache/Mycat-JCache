@@ -74,9 +74,6 @@ public class JcacheMain
     	
     	/* process arguments */
         if(args.length > 0){
-        	for(int i = 0;i<args.length;i++){
-        		System.out.println("args["+i+"] = " + args[i]);
-        	}
         	initGlobalConfig(args);
         }
     	
@@ -200,7 +197,7 @@ public class JcacheMain
         
         Segment segment = new Segment(power);
         JcacheContext.setSegment(segment);
-        JcacheContext.setExecutor(Executors.newWorkStealingPool(Settings.numThreads));
+        JcacheContext.setExecutor(Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()));
     }
     
     /**
@@ -232,7 +229,7 @@ public class JcacheMain
     	String[] commandLineparams = tmpparams.split("-");
     	
     	IntStream.range(0, commandLineparams.length).forEach(i->{
-    		String[] params = commandLineparams[i].split(" ");
+    		String[] params = commandLineparams[i].split("\\s+");
     		switch (params[0]) {
     		case "":
     			break;

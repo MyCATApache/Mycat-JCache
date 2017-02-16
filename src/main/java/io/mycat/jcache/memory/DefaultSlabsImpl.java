@@ -18,17 +18,18 @@ public class DefaultSlabsImpl implements Slabs {
 	
 	private Logger logger = LoggerFactory.getLogger(DefaultSlabsImpl.class);	
 	
-	private static long slabclass;
-	private static long mem_limit;     //总内存大小
-	private static long mem_malloced;   //已分配内存
+	private static long slabclass;     //slabclass 数组内存首地址
+	private static long mem_limit;     //总内存大小,收到配置参数 -m 约束.如果没有配置默认 64M
+	private static long mem_malloced;   //已分配内存,每分配一个slab ,item 该值均会增加.
 	/* If the memory limit has been hit once. Used as a hint to decide when to
 	 * early-wake the LRU maintenance thread */
 	private static boolean mem_limit_reached = false;
-	private static int power_largest;
+
+	private static int power_largest;   // 根据当前内存参数配置,分配的最大slabcalss 数量.受到增长因子的影响.
 	
-	private static long mem_base;
-	private static long mem_current;
-	private static long mem_avail;
+	private static long mem_base; // 当前内存池 内存首地址
+	private static long mem_current;  // 当前未分配的内存的首地址
+	private static long mem_avail;    // 当前可用内存大小.
 	
 	/**
 	 * Access to the slab allocator is protected by this lock
@@ -341,7 +342,7 @@ public class DefaultSlabsImpl implements Slabs {
 		SlabClassUtil.setSize(largestAddr, Settings.slabChunkSizeMax);
 		SlabClassUtil.setPerslab(largestAddr, Settings.slabPageSize/Settings.slabChunkSizeMax);
 		
-		if(Settings.verbose > 1){
+		if(logger.isInfoEnabled()){
 			logger.info("slab addr {}, class {},chunk size {},perslab {}",largestAddr,i,Settings.slabChunkSizeMax,Settings.slabPageSize/Settings.slabChunkSizeMax);
 		}
 		
@@ -399,15 +400,18 @@ public class DefaultSlabsImpl implements Slabs {
 			if(sl_curr==0&&flags!=SLABS_ALLOC_NO_NEWPAGE){
 				do_slabs_newslab(id); //如果没有可用的 item. 新分配一个slab
 			}
+			
 			sl_curr = SlabClassUtil.getSlCurr(p); //重新获取 当前可用item 数量
 			if(sl_curr!=0){
 				/* return off our freelist */
 				it = SlabClassUtil.getSlots(p);  //将it 从空闲链表头中取出
+				logger.debug(ItemUtil.ItemToString(it));
 				long next = ItemUtil.getNext(it);  //将链表第二个元素移动到链表头, 并将 prev 设置为0,因为已经没有上一个元素了
 				SlabClassUtil.setSlots(p, next);
 				if(next!=0){
 					ItemUtil.setPrev(next, 0); 
 				}
+				
 				/* Kill flag and initialize refcount here for lock safety in slab
 	             * mover's freeness detection. */
 				byte it_flags = ItemUtil.getItflags(it);
@@ -422,7 +426,6 @@ public class DefaultSlabsImpl implements Slabs {
 			/* Dealing with a chunked item. */
 	        ret = do_slabs_alloc_chunked(size, p, id); //TODO 
 		}
-		
 		if(ret!=0){
 			SlabClassUtil.incrRequested(p, size);
 		}

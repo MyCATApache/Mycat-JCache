@@ -38,7 +38,7 @@ import io.mycat.jcache.net.command.binary.BinaryVersionCommand;
  */
 public class CommandContext {	
 	
-	private static Map<Object,Command> commandMap = new HashMap<>();
+	private static Map<Object,BinaryCommand> commandMap = new HashMap<>();
 	
 	//TODO 注册过程待优化.暂时先这样写
 	static {
@@ -92,7 +92,7 @@ public class CommandContext {
 	
 	private CommandContext(){}
 	
-	public static Command getCommand(Byte key){
+	public static BinaryCommand getCommand(Byte key){
 		CommandType type = CommandType.getType(key);
 		if(type==null){
 			return null;
@@ -100,7 +100,7 @@ public class CommandContext {
 		return commandMap.get(type);
 	}
 	
-	public static Command getCommand(String key){
+	public static BinaryCommand getCommand(String key){
 		CommandType type = CommandType.valueOf(key);
 		if(type==null){
 			return null;

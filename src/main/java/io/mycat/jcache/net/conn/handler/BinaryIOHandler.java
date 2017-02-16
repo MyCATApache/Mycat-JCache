@@ -18,27 +18,25 @@ import io.mycat.jcache.net.conn.Connection;
 public class BinaryIOHandler implements IOHandler{ 
 
 	@Override
-	public void doReadHandler(Connection conn) throws IOException {	
+	public boolean doReadHandler(Connection conn) throws IOException {	
 		
-		Command command = null;
+		BinaryCommand command = null;
 		final ByteBuffer readbuffer = conn.getReadDataBuffer();
-		int offset = readbuffer.position();
-    	int limit  = readbuffer.limit();
+		int offset = conn.getLastMessagePos();
+    	int limit  = readbuffer.position();
     	while(offset<limit){
             // 读取到了包头和长度
     		// 是否讀完一個報文
     		if(!validateHeader(offset, limit)) {
     			logger.debug("C#{}B#{} validate protocol packet header: too short, ready to handle next the read event offset{},limit{}",
     				conn.getId(), readbuffer.hashCode(),offset,limit);
-    			readbuffer.compact();
-    			return; 
+    			return false; 
     		}
     		int length = getPacketLength(readbuffer,offset);
     		if((length + offset)> limit) {
     			logger.debug("C#{}B#{} nNot a whole packet: required length = {} bytes, cur total length = {} bytes, "
     			 	+ "ready to handle the next read event", conn.getId(), readbuffer.hashCode(), length, limit);
-    			readbuffer.compact();
-    			return;
+    			return false;
     		}
     		
     		/**
@@ -54,7 +52,7 @@ public class BinaryIOHandler implements IOHandler{
     	        						   conn.getBinaryRequestHeader().getOpcode(),
     	        						   ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_UNKNOWN_COMMAND.getStatus());
     	        conn.setWrite_and_go(CONN_STATES.conn_closing);
-    	        return;
+    	        return true;
     	    }
     	    
 //          TODO    	    
@@ -69,7 +67,7 @@ public class BinaryIOHandler implements IOHandler{
     	    	BinaryCommand.writeResponseError(conn, 
 						   conn.getBinaryRequestHeader().getOpcode(),
 						   ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_EINVAL.getStatus());
-    			return;
+    			return true;
     	    }
     	    byte opcode = conn.getBinaryRequestHeader().getOpcode();
     		//执行命令
@@ -81,15 +79,15 @@ public class BinaryIOHandler implements IOHandler{
 						   conn.getBinaryRequestHeader().getOpcode(),
 						   ProtocolResponseStatus.PROTOCOL_BINARY_RESPONSE_UNKNOWN_COMMAND.getStatus());
     			conn.setWrite_and_go(CONN_STATES.conn_closing);
-    			return;
+    			return true;
     		}else{
     			conn.setCurCommand(CommandType.getType(opcode));
         		command.execute(conn);
         		offset += length;
-        		readbuffer.position(offset);
+        		conn.setLastMessagePos(offset);
     		}
     	}
-    	readbuffer.clear();
+    	return true;
 	}
 
 	/**
