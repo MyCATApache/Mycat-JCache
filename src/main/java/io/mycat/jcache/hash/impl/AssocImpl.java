@@ -268,7 +268,7 @@ public class AssocImpl implements Assoc,Runnable{
 	private void assoc_maintenance_thread(){
 		maintenance_lock.lock();
 		try {
-			while(do_run_maintenance_thread>0){
+			while(true){
 				int ii = 0;
 				
 				/* There is only one expansion thread, so no need to global lock. */

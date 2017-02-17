@@ -61,7 +61,9 @@ public class JcacheMain
 	
 	public static void main( String[] args ) throws IOException 
     {	
-    	
+    	/**
+    	 * reactor模型初始化
+    	 */
     	initReactorStrategy();
     	/**
     	 * 后期可能变更为从环境变量获取
