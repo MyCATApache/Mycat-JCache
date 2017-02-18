@@ -70,7 +70,7 @@ public class JcacheMain
     	 */
     	ConfigLoader.loadProperties(null);
     	
-        /* Run regardless of initializing it later */
+        /* lru爬出初始化 */
         init_lru_crawler();
         init_lru_maintainer();
     	
