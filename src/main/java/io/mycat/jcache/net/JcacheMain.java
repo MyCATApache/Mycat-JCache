@@ -74,7 +74,7 @@ public class JcacheMain
         init_lru_crawler();
         init_lru_maintainer();
     	
-    	/* process arguments */
+    	/* 获取程序参数 */
         if(args.length > 0){
         	initGlobalConfig(args);
         }
