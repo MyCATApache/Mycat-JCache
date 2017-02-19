@@ -54,6 +54,8 @@ public class JcacheMain
     private static int maxcore = 0;
     private static String username;
     private static String pid_file;
+    
+    static int lru_crawler_initialized = 0;
 	/**
 	 * 主线程 将新连接分派给 reactor 的策略
 	 */
@@ -147,8 +149,11 @@ public class JcacheMain
 		//TODO
 	}
     
-    private static void init_lru_crawler(){
-    	//TODO
+    private static int init_lru_crawler(){
+    	if (lru_crawler_initialized == 0) {
+            lru_crawler_initialized = 1;
+        }
+        return 0;
     }
     
     private static void init_lru_maintainer(){
