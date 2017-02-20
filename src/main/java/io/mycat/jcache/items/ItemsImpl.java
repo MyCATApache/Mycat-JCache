@@ -911,10 +911,34 @@ public class ItemsImpl implements Items{
 		return 0;
 	}
 
+	class LruMaintainerThread implements Runnable {
+
+		@Override
+		public void run() {
+			// TODO Auto-generated method stub
+		}
+		
+	} 
+	
+	LruMaintainerThread lru_maintainer_thread = new LruMaintainerThread();
+	
 	@Override
 	public int start_lru_maintainer_thread() {
-		// TODO Auto-generated method stub
-		return 0;
+		int ret = 0;
+		//自旋转锁
+		while(!lru_maintainer_lock.compareAndSet(false, true)){}
+		try{
+			do_run_lru_maintainer_thread = 1;
+		    Settings.lruMaintainerThread = true;
+		    //开启lru主线程
+	        Thread thread = new Thread(lru_maintainer_thread);
+	        thread.start();
+		    logger.info("Can't create LRU maintainer thread: {}",ret);
+		}finally{
+			//解锁
+			lru_maintainer_lock.lazySet(false);
+		}
+		return ret;
 	}
 
 	@Override
@@ -931,14 +955,12 @@ public class ItemsImpl implements Items{
 
 	@Override
 	public void lru_maintainer_pause() {
-		// TODO Auto-generated method stub
-		
+		lru_maintainer_lock.lazySet(false);
 	}
 
 	@Override
 	public void lru_maintainer_resume() {
-		// TODO Auto-generated method stub
-		
+		lru_maintainer_lock.lazySet(true);
 	}
 
 }
