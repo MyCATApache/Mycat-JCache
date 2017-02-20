@@ -936,8 +936,10 @@ public class ItemsImpl implements Items{
 		
 	} 
 	
+	//lru实现类
 	LruMaintainerThread lru_maintainer_thread = new LruMaintainerThread();
-	Thread thread = new Thread(lru_maintainer_thread);
+	//线程容器
+	Thread lru_maintainer_thread_warper;
 	
 	@Override
 	public int start_lru_maintainer_thread() {
@@ -948,7 +950,7 @@ public class ItemsImpl implements Items{
 			do_run_lru_maintainer_thread = 1;
 		    Settings.lruMaintainerThread = true;
 		    //开启lru主线程
-	        thread.start();
+		    lru_maintainer_thread_warper.start();
 		    logger.info("Can't create LRU maintainer thread: {}",ret);
 		}finally{
 			//解锁
@@ -966,7 +968,7 @@ public class ItemsImpl implements Items{
 			do_run_lru_maintainer_thread = 0;
 		    Settings.lruMaintainerThread = false;
 		    //开启lru主线程
-	        thread.stop();
+		    lru_maintainer_thread_warper.stop();
 		    logger.info("Failed to stop LRU maintainer thread: {}",ret);
 		}finally{
 			//解锁
@@ -977,13 +979,16 @@ public class ItemsImpl implements Items{
 
 	@Override
 	public int init_lru_maintainer() {
-		// TODO Auto-generated method stub
+		if (lru_maintainer_initialized == 0) {
+			lru_maintainer_thread_warper = new Thread(lru_maintainer_thread);
+	        lru_maintainer_initialized = 1;
+	    }
 		return 0;
 	}
 
 	@Override
 	public void lru_maintainer_pause() {
-		lru_maintainer_lock.lazySet(false);
+		while(!lru_maintainer_lock.compareAndSet(false, true)){}
 	}
 
 	@Override
