@@ -913,8 +913,19 @@ public class ItemsImpl implements Items{
 
 	@Override
 	public int start_lru_maintainer_thread() {
-		// TODO Auto-generated method stub
-		return 0;
+		int ret = 0;
+		try {
+			do_run_lru_maintainer_thread = 1;
+		    Settings.lruMaintainerThread = true;
+			if(!lru_maintainer_lock.compareAndSet(false, true)){
+				logger.info("Can't create LRU maintainer thread: {}",ret);
+			    lru_maintainer_lock.lazySet(false);
+				return -1;
+			}
+		} finally {
+			lru_maintainer_lock.lazySet(false);
+		}
+	    return 0;
 	}
 
 	@Override
