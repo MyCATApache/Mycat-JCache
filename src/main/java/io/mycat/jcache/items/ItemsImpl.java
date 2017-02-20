@@ -942,14 +942,12 @@ public class ItemsImpl implements Items{
 
 	@Override
 	public void lru_maintainer_pause() {
-		// TODO Auto-generated method stub
-		
+		lru_maintainer_lock.lazySet(false);
 	}
 
 	@Override
 	public void lru_maintainer_resume() {
-		// TODO Auto-generated method stub
-		
+		lru_maintainer_lock.lazySet(true);
 	}
 
 }
