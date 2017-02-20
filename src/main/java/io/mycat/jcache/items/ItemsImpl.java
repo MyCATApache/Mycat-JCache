@@ -911,11 +911,17 @@ public class ItemsImpl implements Items{
 		return 0;
 	}
 
+	/**
+	 * lru线程实现类
+	 * @author Tommy
+	 */
 	class LruMaintainerThread implements Runnable {
 
 		@Override
 		public void run() {
-			// TODO Auto-generated method stub
+			while (do_run_lru_maintainer_thread!=0) {
+				
+			}
 		}
 		
 	} 
