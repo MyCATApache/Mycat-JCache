@@ -919,14 +919,25 @@ public class ItemsImpl implements Items{
 
 		@Override
 		public void run() {
+			long last_crawler_check = 0;
+			long current_time = 0;
 			while (do_run_lru_maintainer_thread!=0) {
 				
+				
+				
+				if (Settings.lru_crawler && last_crawler_check != current_time) {
+		            last_crawler_check = current_time;
+		        }
 			}
+			
+			if (Settings.verbose > 2)
+		        logger.info("LRU maintainer thread stopping");
 		}
 		
 	} 
 	
 	LruMaintainerThread lru_maintainer_thread = new LruMaintainerThread();
+	Thread thread = new Thread(lru_maintainer_thread);
 	
 	@Override
 	public int start_lru_maintainer_thread() {
@@ -937,7 +948,6 @@ public class ItemsImpl implements Items{
 			do_run_lru_maintainer_thread = 1;
 		    Settings.lruMaintainerThread = true;
 		    //开启lru主线程
-	        Thread thread = new Thread(lru_maintainer_thread);
 	        thread.start();
 		    logger.info("Can't create LRU maintainer thread: {}",ret);
 		}finally{
@@ -949,8 +959,20 @@ public class ItemsImpl implements Items{
 
 	@Override
 	public int stop_lru_maintainer_thread() {
-		// TODO Auto-generated method stub
-		return 0;
+		int ret = 0;
+		//自旋转锁
+		while(!lru_maintainer_lock.compareAndSet(false, true)){}
+		try{
+			do_run_lru_maintainer_thread = 0;
+		    Settings.lruMaintainerThread = false;
+		    //开启lru主线程
+	        thread.stop();
+		    logger.info("Failed to stop LRU maintainer thread: {}",ret);
+		}finally{
+			//解锁
+			lru_maintainer_lock.lazySet(false);
+		}
+		return ret;
 	}
 
 	@Override
