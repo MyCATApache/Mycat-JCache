@@ -1058,6 +1058,7 @@ public class ItemsImpl implements Items{
 	public void lru_maintainer_crawler_check(CrawlerExpiredData cdata ) {
 		 int i;
 		 long next_crawls[] = new long[Settings.MAX_NUMBER_OF_SLAB_CLASSES];
+		 long next_crawl_wait[] = new long[Settings.MAX_NUMBER_OF_SLAB_CLASSES];
 		 int todo[] = new int[Settings.MAX_NUMBER_OF_SLAB_CLASSES];
 		 boolean do_run = false;
 		 if ( !cdata.crawl_complete) {
@@ -1068,10 +1069,48 @@ public class ItemsImpl implements Items{
 			 CrawlerstatsT s = cdata.crawlerstats[i];
 			 
 			 if (s.run_complete) {
-				 
-				 
-				 
-				 s.run_complete = false;
+				while(!cdata.lock.compareAndSet(false, true)){}
+				try{
+					int x;
+					int possible_reclaims = s.seen - s.noexp;
+					int available_reclaims = 0;
+					int low_watermark = (possible_reclaims / 100) + 1;
+					long since_run = Settings.current_time - s.end_time;
+					for (x = 0; x < 60; x++) {
+			         	available_reclaims += s.histo[x];
+			         	if (available_reclaims > low_watermark) {
+			            	if (next_crawl_wait[i] < (x * 60)) {
+			            		next_crawl_wait[i] += 60;
+			             	} else if (next_crawl_wait[i] >= 60) {
+			                	next_crawl_wait[i] -= 60;
+			             	}
+			            	break;
+			           }
+			        }
+					
+					if (available_reclaims == 0) {
+		                next_crawl_wait[i] += 60;
+		            }
+					
+					if (next_crawl_wait[i] > Settings.MAX_MAINTCRAWL_WAIT) {
+			            next_crawl_wait[i] = Settings.MAX_MAINTCRAWL_WAIT;
+			        }
+
+			       	next_crawls[i] = Settings.current_time + next_crawl_wait[i] + 5;
+					
+			       	//日志
+			       	logger.warn("i:{},low_watermark:{},available_reclaims:{},since_run:{},"
+			       			+ "next_crawls:{},time:{},seen:{},reclaimed{}"
+			       			, i,  low_watermark, available_reclaims,
+		                     since_run, next_crawls[i] - Settings.current_time,
+		                    s.end_time - s.start_time, s.seen, s.reclaimed);
+			       	
+					s.run_complete = false;
+				}finally{
+					//解锁
+					cdata.lock.lazySet(false);
+				}
+				
 			 }
 			 
 			 if (Settings.current_time > next_crawls[i]) {

@@ -101,5 +101,6 @@ public class Settings {
 	public static final int CHUNK_ALIGN_BYTES = 8;
 	public static final int SLAB_GLOBAL_PAGE_POOL = 0; /* magic slab class for storing pages for reassignment */
 	public static final int ITEM_HEADER_LENGTH = 52;   /* item header length */
+	public static final int MAX_MAINTCRAWL_WAIT = 60 * 60;
 
 }
