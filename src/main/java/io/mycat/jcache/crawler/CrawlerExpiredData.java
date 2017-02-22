@@ -4,6 +4,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.mycat.jcache.setting.Settings;
 
+/**
+ * 
+ * @author Tommy
+ *
+ */
 public class CrawlerExpiredData {
 	public static AtomicBoolean lock = new AtomicBoolean(false);
 	public CrawlerstatsT crawlerstats[] = new CrawlerstatsT[Settings.MAX_NUMBER_OF_SLAB_CLASSES];

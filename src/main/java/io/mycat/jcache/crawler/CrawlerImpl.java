@@ -1,5 +1,9 @@
 package io.mycat.jcache.crawler;
-
+/**
+ * 
+ * @author Tommy
+ *
+ */
 public class CrawlerImpl implements Crawler {
 
 	@Override
