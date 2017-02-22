@@ -1,6 +1,7 @@
 package io.mycat.jcache.items;
 
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Array;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -13,6 +14,10 @@ import org.slf4j.LoggerFactory;
 import io.mycat.jcache.context.JcacheContext;
 import io.mycat.jcache.context.Stats;
 import io.mycat.jcache.context.StatsState;
+import io.mycat.jcache.crawler.Crawler;
+import io.mycat.jcache.crawler.CrawlerExpiredData;
+import io.mycat.jcache.crawler.CrawlerImpl;
+import io.mycat.jcache.crawler.CrawlerResultType;
 import io.mycat.jcache.enums.ItemFlags;
 import io.mycat.jcache.enums.LRU_TYPE_MAP;
 import io.mycat.jcache.memory.Slabs;
@@ -929,7 +934,7 @@ public class ItemsImpl implements Items{
 			//每次循环执行之后延时时间
 			long to_sleep = MIN_LRU_MAINTAINER_SLEEP;
 			long last_crawler_check = 0;
-			
+			CrawlerExpiredData cdata = new CrawlerExpiredData();
 			if (Settings.verbose > 2)
 				logger.info("Starting LRU maintainer background thread");
 			//死循环,不断循环执行
@@ -974,7 +979,7 @@ public class ItemsImpl implements Items{
 				if (Settings.lru_crawler && last_crawler_check != Settings.current_time) {
 					//如果开启了则调用该函数执行,判断是否符合触发item爬虫线程条件
 		            //如果符合条件则触发信号
-					lru_maintainer_crawler_check();
+					lru_maintainer_crawler_check(cdata);
 					last_crawler_check = Settings.current_time;
 		        }
 				
@@ -1048,9 +1053,24 @@ public class ItemsImpl implements Items{
 	}
 
 	@Override
-	public void lru_maintainer_crawler_check() {
-		// TODO Auto-generated method stub
-		
+	public void lru_maintainer_crawler_check(CrawlerExpiredData cdata ) {
+		 int i;
+		 long next_crawls[] = new long[Settings.MAX_NUMBER_OF_SLAB_CLASSES];
+		 int todo[] = new int[Settings.MAX_NUMBER_OF_SLAB_CLASSES];
+		 boolean do_run = false;
+		 for (i = Settings.POWER_SMALLEST; i < Settings.MAX_NUMBER_OF_SLAB_CLASSES; i++) {
+			 
+			 if (Settings.current_time > next_crawls[i]) {
+				 todo[i] = 1;
+		         do_run = true;
+		         next_crawls[i] = Settings.current_time + 5; // minimum retry wait.
+		     }
+			 
+		 }
+		 if (do_run) {
+			 Crawler crawler = new CrawlerImpl();
+			 crawler.lru_crawler_start(todo, 0,CrawlerResultType.CRAWLER_EXPIRED,cdata, 0L, 0);
+		 }
 	}
 
 	@Override
