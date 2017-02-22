@@ -1072,9 +1072,9 @@ public class ItemsImpl implements Items{
 				while(!cdata.lock.compareAndSet(false, true)){}
 				try{
 					int x;
-					int possible_reclaims = s.seen - s.noexp;
-					int available_reclaims = 0;
-					int low_watermark = (possible_reclaims / 100) + 1;
+					long possible_reclaims = s.seen - s.noexp;
+					long available_reclaims = 0;
+					long low_watermark = (possible_reclaims / 100) + 1;
 					long since_run = Settings.current_time - s.end_time;
 					for (x = 0; x < 60; x++) {
 			         	available_reclaims += s.histo[x];
