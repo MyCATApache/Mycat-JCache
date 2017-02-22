@@ -1,5 +1,6 @@
 package io.mycat.jcache.items;
 
+import io.mycat.jcache.crawler.CrawlerExpiredData;
 import io.mycat.jcache.net.conn.Connection;
 import io.mycat.jcache.setting.Settings;
 
@@ -74,7 +75,7 @@ public interface Items {
 	
 	void lru_maintainer_resume();
 	
-	void lru_maintainer_crawler_check();
+	void lru_maintainer_crawler_check(CrawlerExpiredData cdata );
 	
-	int lru_maintainer_juggle(int i);
+	int lru_maintainer_juggle(int slabs_clsid);
 }

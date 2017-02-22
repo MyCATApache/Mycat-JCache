@@ -1,6 +1,7 @@
 package io.mycat.jcache.items;
 
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Array;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -13,6 +14,11 @@ import org.slf4j.LoggerFactory;
 import io.mycat.jcache.context.JcacheContext;
 import io.mycat.jcache.context.Stats;
 import io.mycat.jcache.context.StatsState;
+import io.mycat.jcache.crawler.Crawler;
+import io.mycat.jcache.crawler.CrawlerExpiredData;
+import io.mycat.jcache.crawler.CrawlerImpl;
+import io.mycat.jcache.crawler.CrawlerResultType;
+import io.mycat.jcache.crawler.CrawlerstatsT;
 import io.mycat.jcache.enums.ItemFlags;
 import io.mycat.jcache.enums.LRU_TYPE_MAP;
 import io.mycat.jcache.memory.Slabs;
@@ -929,7 +935,8 @@ public class ItemsImpl implements Items{
 			//每次循环执行之后延时时间
 			long to_sleep = MIN_LRU_MAINTAINER_SLEEP;
 			long last_crawler_check = 0;
-			
+			CrawlerExpiredData cdata = new CrawlerExpiredData();
+			cdata.crawl_complete = false;
 			if (Settings.verbose > 2)
 				logger.info("Starting LRU maintainer background thread");
 			//死循环,不断循环执行
@@ -974,7 +981,7 @@ public class ItemsImpl implements Items{
 				if (Settings.lru_crawler && last_crawler_check != Settings.current_time) {
 					//如果开启了则调用该函数执行,判断是否符合触发item爬虫线程条件
 		            //如果符合条件则触发信号
-					lru_maintainer_crawler_check();
+					lru_maintainer_crawler_check(cdata);
 					last_crawler_check = Settings.current_time;
 		        }
 				
@@ -1048,15 +1055,108 @@ public class ItemsImpl implements Items{
 	}
 
 	@Override
-	public void lru_maintainer_crawler_check() {
-		// TODO Auto-generated method stub
-		
+	public void lru_maintainer_crawler_check(CrawlerExpiredData cdata ) {
+		 int i;
+		 long next_crawls[] = new long[Settings.MAX_NUMBER_OF_SLAB_CLASSES];
+		 long next_crawl_wait[] = new long[Settings.MAX_NUMBER_OF_SLAB_CLASSES];
+		 int todo[] = new int[Settings.MAX_NUMBER_OF_SLAB_CLASSES];
+		 boolean do_run = false;
+		 if ( !cdata.crawl_complete) {
+		     return;
+		 }
+		 
+		 for (i = Settings.POWER_SMALLEST; i < Settings.MAX_NUMBER_OF_SLAB_CLASSES; i++) {
+			 CrawlerstatsT s = cdata.crawlerstats[i];
+			 
+			 if (s.run_complete) {
+				while(!cdata.lock.compareAndSet(false, true)){}
+				try{
+					int x;
+					long possible_reclaims = s.seen - s.noexp;
+					long available_reclaims = 0;
+					long low_watermark = (possible_reclaims / 100) + 1;
+					long since_run = Settings.current_time - s.end_time;
+					for (x = 0; x < 60; x++) {
+			         	available_reclaims += s.histo[x];
+			         	if (available_reclaims > low_watermark) {
+			            	if (next_crawl_wait[i] < (x * 60)) {
+			            		next_crawl_wait[i] += 60;
+			             	} else if (next_crawl_wait[i] >= 60) {
+			                	next_crawl_wait[i] -= 60;
+			             	}
+			            	break;
+			           }
+			        }
+					
+					if (available_reclaims == 0) {
+		                next_crawl_wait[i] += 60;
+		            }
+					
+					if (next_crawl_wait[i] > Settings.MAX_MAINTCRAWL_WAIT) {
+			            next_crawl_wait[i] = Settings.MAX_MAINTCRAWL_WAIT;
+			        }
+
+			       	next_crawls[i] = Settings.current_time + next_crawl_wait[i] + 5;
+					
+			       	//日志
+			       	logger.warn("i:{},low_watermark:{},available_reclaims:{},since_run:{},"
+			       			+ "next_crawls:{},time:{},seen:{},reclaimed{}"
+			       			, i,  low_watermark, available_reclaims,
+		                     since_run, next_crawls[i] - Settings.current_time,
+		                    s.end_time - s.start_time, s.seen, s.reclaimed);
+			       	
+					s.run_complete = false;
+				}finally{
+					//解锁
+					cdata.lock.lazySet(false);
+				}
+				
+			 }
+			 
+			 if (Settings.current_time > next_crawls[i]) {
+				 todo[i] = 1;
+		         do_run = true;
+		         next_crawls[i] = Settings.current_time + 5; // minimum retry wait.
+		     }
+			 
+		 }
+		 if (do_run) {
+			 Crawler crawler = new CrawlerImpl();
+			 crawler.lru_crawler_start(todo, 0,CrawlerResultType.CRAWLER_EXPIRED,cdata, 0L, 0);
+		 }
 	}
 
 	@Override
-	public int lru_maintainer_juggle(int i) {
-		// TODO Auto-generated method stub
-		return 1;
+	public int lru_maintainer_juggle(int slabs_clsid) {
+		int i;
+	    int did_moves = 0;
+	    boolean mem_limit_reached = false;
+	    long total_bytes = 0L;
+	    int chunks_perslab = 0;
+	    int chunks_free = 0;
+//	    chunks_free = slabs_available_chunks(slabs_clsid, &mem_limit_reached,
+//	            &total_bytes, &chunks_perslab);
+	    if (Settings.expirezero_does_not_evict)
+	        total_bytes -= noexp_lru_size(slabs_clsid);
+	    
+	    if (Settings.slab_automove > 0 && chunks_free > (chunks_perslab * 2.5)) {
+//	        slabs_reassign(slabs_clsid, Settings.SLAB_GLOBAL_PAGE_POOL);
+	    }
+	    
+	    /* Juggle HOT/WARM up to N times */
+	    for (i = 0; i < 1000; i++) {
+	        int do_more = 0;
+	        if (lru_pull_tail(slabs_clsid, LRU_TYPE_MAP.HOT_LRU, total_bytes, LRU_PULL_CRAWL_BLOCKS) > 0 ||
+	            lru_pull_tail(slabs_clsid, LRU_TYPE_MAP.WARM_LRU, total_bytes, LRU_PULL_CRAWL_BLOCKS) > 0) {
+	            do_more++;
+	        }
+	        do_more += lru_pull_tail(slabs_clsid, LRU_TYPE_MAP.COLD_LRU, total_bytes, LRU_PULL_CRAWL_BLOCKS);
+	        if (do_more == 0)
+	            break;
+	        did_moves++;
+	    }
+	    
+	    return did_moves;
 	}
 
 }
