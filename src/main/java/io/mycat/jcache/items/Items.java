@@ -77,5 +77,5 @@ public interface Items {
 	
 	void lru_maintainer_crawler_check(CrawlerExpiredData cdata );
 	
-	int lru_maintainer_juggle(int i);
+	int lru_maintainer_juggle(int slabs_clsid);
 }

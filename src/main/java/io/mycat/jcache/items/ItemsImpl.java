@@ -1127,9 +1127,36 @@ public class ItemsImpl implements Items{
 	}
 
 	@Override
-	public int lru_maintainer_juggle(int i) {
-		// TODO Auto-generated method stub
-		return 1;
+	public int lru_maintainer_juggle(int slabs_clsid) {
+		int i;
+	    int did_moves = 0;
+	    boolean mem_limit_reached = false;
+	    long total_bytes = 0L;
+	    int chunks_perslab = 0;
+	    int chunks_free = 0;
+//	    chunks_free = slabs_available_chunks(slabs_clsid, &mem_limit_reached,
+//	            &total_bytes, &chunks_perslab);
+	    if (Settings.expirezero_does_not_evict)
+	        total_bytes -= noexp_lru_size(slabs_clsid);
+	    
+	    if (Settings.slab_automove > 0 && chunks_free > (chunks_perslab * 2.5)) {
+//	        slabs_reassign(slabs_clsid, Settings.SLAB_GLOBAL_PAGE_POOL);
+	    }
+	    
+	    /* Juggle HOT/WARM up to N times */
+	    for (i = 0; i < 1000; i++) {
+	        int do_more = 0;
+	        if (lru_pull_tail(slabs_clsid, LRU_TYPE_MAP.HOT_LRU, total_bytes, LRU_PULL_CRAWL_BLOCKS) > 0 ||
+	            lru_pull_tail(slabs_clsid, LRU_TYPE_MAP.WARM_LRU, total_bytes, LRU_PULL_CRAWL_BLOCKS) > 0) {
+	            do_more++;
+	        }
+	        do_more += lru_pull_tail(slabs_clsid, LRU_TYPE_MAP.COLD_LRU, total_bytes, LRU_PULL_CRAWL_BLOCKS);
+	        if (do_more == 0)
+	            break;
+	        did_moves++;
+	    }
+	    
+	    return did_moves;
 	}
 
 }
