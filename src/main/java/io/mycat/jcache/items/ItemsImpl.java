@@ -18,6 +18,7 @@ import io.mycat.jcache.crawler.Crawler;
 import io.mycat.jcache.crawler.CrawlerExpiredData;
 import io.mycat.jcache.crawler.CrawlerImpl;
 import io.mycat.jcache.crawler.CrawlerResultType;
+import io.mycat.jcache.crawler.CrawlerstatsT;
 import io.mycat.jcache.enums.ItemFlags;
 import io.mycat.jcache.enums.LRU_TYPE_MAP;
 import io.mycat.jcache.memory.Slabs;
@@ -935,6 +936,7 @@ public class ItemsImpl implements Items{
 			long to_sleep = MIN_LRU_MAINTAINER_SLEEP;
 			long last_crawler_check = 0;
 			CrawlerExpiredData cdata = new CrawlerExpiredData();
+			cdata.crawl_complete = false;
 			if (Settings.verbose > 2)
 				logger.info("Starting LRU maintainer background thread");
 			//死循环,不断循环执行
@@ -1058,7 +1060,19 @@ public class ItemsImpl implements Items{
 		 long next_crawls[] = new long[Settings.MAX_NUMBER_OF_SLAB_CLASSES];
 		 int todo[] = new int[Settings.MAX_NUMBER_OF_SLAB_CLASSES];
 		 boolean do_run = false;
+		 if ( !cdata.crawl_complete) {
+		     return;
+		 }
+		 
 		 for (i = Settings.POWER_SMALLEST; i < Settings.MAX_NUMBER_OF_SLAB_CLASSES; i++) {
+			 CrawlerstatsT s = cdata.crawlerstats[i];
+			 
+			 if (s.run_complete) {
+				 
+				 
+				 
+				 s.run_complete = false;
+			 }
 			 
 			 if (Settings.current_time > next_crawls[i]) {
 				 todo[i] = 1;
