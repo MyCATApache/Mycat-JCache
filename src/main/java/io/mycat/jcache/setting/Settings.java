@@ -8,6 +8,8 @@
  */
 package io.mycat.jcache.setting;
 
+import java.util.Date;
+
 import io.mycat.jcache.enums.protocol.Protocol;
 import io.mycat.jcache.net.JcacheGlobalConfig;
 import sun.misc.VM;
@@ -73,7 +75,7 @@ public class Settings {
 	public static int lru_crawler_sleep = 100;
 	public static int lru_crawler_tocrawl = 0;
 	public static boolean lru_maintainer_thread = false;
-	
+	public static long current_time = new Date().getTime();
 	
 	public static String hash_algorithm; //PigBrother hash algorithm
 

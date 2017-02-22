@@ -73,4 +73,8 @@ public interface Items {
 	void lru_maintainer_pause();
 	
 	void lru_maintainer_resume();
+	
+	void lru_maintainer_crawler_check();
+	
+	int lru_maintainer_juggle(int i);
 }
