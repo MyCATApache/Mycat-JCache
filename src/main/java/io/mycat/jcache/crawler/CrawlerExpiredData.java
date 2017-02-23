@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import io.mycat.jcache.setting.Settings;
 
 /**
- * 
+ * item爬虫常量定义
  * @author Tommy
  *
  */

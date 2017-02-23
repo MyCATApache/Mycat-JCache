@@ -1,6 +1,6 @@
 package io.mycat.jcache.crawler;
 /**
- * 
+ * item爬虫实现类
  * @author Tommy
  *
  */
