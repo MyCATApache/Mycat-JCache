@@ -1,5 +1,10 @@
 package io.mycat.jcache.crawler;
 
+/**
+ * item爬虫接口类
+ * @author Tommy
+ *
+ */
 public interface Crawler {
 	int start_item_crawler_thread();
 	int stop_item_crawler_thread();
