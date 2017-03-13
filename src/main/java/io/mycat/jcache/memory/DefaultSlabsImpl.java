@@ -433,14 +433,67 @@ public class DefaultSlabsImpl implements Slabs {
 	}
 	
 	/**
-	 * TODO
+	 * This calculation ends up adding sizeof(void *) to the item size.
 	 * @param size
 	 * @param p
 	 * @param id
 	 * @return
 	 */
 	public long do_slabs_alloc_chunked(int size,long p,int id){
-		return 0;
+		long ret;
+		long it;
+		int cSize = SlabClassUtil.getSize(p)-ItemChunkUtil.getNtotal();
+		int chunks_req= size/cSize;
+		if(size % cSize!=0){
+			chunks_req++;
+		}
+		int slCurr = SlabClassUtil.getSlCurr(p);
+		while(slCurr<chunks_req){
+			if(!do_slabs_newslab(id)){
+				break;
+			}
+		}
+		if(slCurr>=chunks_req){
+			long chunk;
+			/* Configure the head item in the chain. */
+			it = SlabClassUtil.getSlots(p);
+			long nextIt = ItemUtil.getNext(it);
+			SlabClassUtil.setSlots(p,nextIt);
+
+			/* Squirrel away the "top chunk" into h_next for now */
+			ItemUtil.setHNext(it,SlabClassUtil.getSlots(p));
+			chunk = ItemUtil.ITEM_data(it);
+
+
+			/* roll down the chunks, marking them as such. */
+			for(int x = 0;x<chunks_req-1;x++){
+				ItemChunkUtil.setItFlags(chunk,(byte)(ItemChunkUtil.getItFlags(chunk) & ~ItemFlags.ITEM_SLABBED.getFlags()));
+				ItemChunkUtil.setItFlags(chunk,(byte)(ItemChunkUtil.getItFlags(chunk) | ItemFlags.ITEM_CHUNK.getFlags()));
+				/* Chunks always have a direct reference to the head item */
+				ItemChunkUtil.setHead(chunk,it);
+				ItemChunkUtil.setSize(chunk,SlabClassUtil.getSize(p)-ItemChunkUtil.getNtotal());
+				ItemChunkUtil.setUsed(chunk,0);
+				ItemChunkUtil.getNext(chunk);
+			}
+			 /* The final "next" is now the top of the slab freelist */
+			SlabClassUtil.setSlots(p,chunk);
+			if(chunk!=0 && ItemChunkUtil.getPrev(chunk)!=0){
+				long prev = ItemChunkUtil.getPrev(chunk);
+				long preChunk = ItemChunkUtil.getPrev(chunk);
+				ItemChunkUtil.setNext(preChunk,0);
+				ItemChunkUtil.setPrev(chunk,0);
+			}
+
+			ItemUtil.setItflags(it,(byte)(ItemUtil.getItflags(it) & ~ItemFlags.ITEM_SLABBED.getFlags()));
+			ItemUtil.setItflags(it,(byte)(ItemUtil.getItflags(it) | ItemFlags.ITEM_CHUNKED.getFlags()));
+			ItemUtil.setRefCount(it,1);
+			slCurr = SlabClassUtil.getSlCurr(p);
+			SlabClassUtil.incrSlCurr(p,slCurr-chunks_req);
+			ret = it;
+		}else{
+			ret = 0;
+		}
+		return ret;
 	}
 	
 
