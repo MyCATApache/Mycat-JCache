@@ -2,6 +2,8 @@ package io.mycat.jcache.memory;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import io.mycat.jcache.context.JcacheContext;
+import io.mycat.jcache.net.JcacheGlobalConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,6 +38,12 @@ public class DefaultSlabsImpl implements Slabs {
 	 */
 	private volatile static AtomicBoolean slabs_lock = new AtomicBoolean(false);
 	private volatile static AtomicBoolean slabs_rebalance_lock = new AtomicBoolean(false);
+
+	private static Object slab_rebalance_cond = new Object();
+	private volatile  static int do_run_slab_thread=1;
+	private volatile  static int do_run_slab_rebalance_thread=1;
+	private static Thread rebalance_tid;
+	private SlabRebalance slab_rebal;
 	
 	/**
 	 * 为  slabclass 分配一个新的slab
@@ -424,7 +432,7 @@ public class DefaultSlabsImpl implements Slabs {
 			}
 		}else{
 			/* Dealing with a chunked item. */
-	        ret = do_slabs_alloc_chunked(size, p, id); //TODO 
+	        ret = do_slabs_alloc_chunked(size, p, id);
 		}
 		if(ret!=0){
 			SlabClassUtil.incrRequested(p, size);
@@ -509,8 +517,17 @@ public class DefaultSlabsImpl implements Slabs {
 
 	@Override
 	public void slabs_adjust_mem_requested(int id, int old, int ntotal) {
-		// TODO Auto-generated method stub
-
+		while(!slabs_lock.compareAndSet(false,true)){}
+		try{
+			if(id<Settings.POWER_SMALLEST || id > power_largest){
+				return;
+			}
+			long p = getSlabClass(id);
+			long requested = SlabClassUtil.getRequested(p) - old + ntotal;
+			SlabClassUtil.decrRequested(p,requested);
+		}finally {
+			slabs_lock.lazySet(false);
+		}
 	}
 
 	@Override
@@ -547,8 +564,24 @@ public class DefaultSlabsImpl implements Slabs {
 
 	@Override
 	public int slabs_available_chunks(int id, long mem_flag, long total_bytes, long chunks_perslab) {
-		// TODO Auto-generated method stub
-		return 0;
+		int ret;
+		while(!slabs_lock.compareAndSet(false,true)){}
+		try{
+			long p = getSlabClass(id);
+			ret = SlabClassUtil.getSlCurr(p);
+			if(mem_flag!=0){
+				mem_flag = mem_limit_reached?1:0;
+			}
+			if(total_bytes!=0){
+				total_bytes = SlabClassUtil.getRequested(p);
+			}
+			if(chunks_perslab!=0){
+				chunks_perslab = SlabClassUtil.getPerslab(p);
+			}
+		}finally{
+			slabs_lock.lazySet(false);
+		}
+		return ret;
 	}
 
 	@Override
@@ -557,10 +590,27 @@ public class DefaultSlabsImpl implements Slabs {
 		return 0;
 	}
 
+	/*
+	 * The maintenance thread is on a sleep/loop cycle, so it should join after a
+ 	* short wait
+ 	* */
 	@Override
 	public void stop_slab_maintenance_thread() {
-		// TODO Auto-generated method stub
-
+		while(!(slabs_rebalance_lock.compareAndSet(false,true))){}
+		try{
+			do_run_slab_thread=0;
+			do_run_slab_rebalance_thread=0;
+			slab_rebalance_cond.notify();
+		}finally {
+			slabs_rebalance_lock.lazySet(false);
+		}
+		/* Wait for the maintenance thread to stop */
+		try {
+			rebalance_tid.join();//TODO REVIEW
+		} catch (InterruptedException e) {
+			logger.error("stop thread error",e);
+			e.printStackTrace();
+		}
 	}
 
 	@Override
