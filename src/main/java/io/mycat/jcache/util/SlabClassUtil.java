@@ -126,6 +126,16 @@ public class SlabClassUtil {
 		long slabindex = addr +slab_list+ index *UnSafeUtil.addresssize;
 		UnSafeUtil.putLongVolatile(slabindex, value);
 	}
+
+	/**
+	 * slab 内存首地址，从slablist 指定的位置取出值
+	 * @param addr
+	 * @param index
+     */
+	public static Long getSlabListIndexValue(long addr,int index){
+		long slabindex = addr +slab_list+ index *UnSafeUtil.addresssize;
+		return UnSafeUtil.getLongVolatile(slabindex);
+	}
 	
 	
 	public static int getListSize(long addr) {

@@ -1,8 +1,15 @@
 package io.mycat.jcache.memory;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import io.mycat.jcache.context.JcacheContext;
+import io.mycat.jcache.context.Stats;
+import io.mycat.jcache.context.StatsState;
+import io.mycat.jcache.enums.memory.MOVE_STATUS;
+import io.mycat.jcache.items.Items;
 import io.mycat.jcache.net.JcacheGlobalConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +23,7 @@ import io.mycat.jcache.util.SlabClassUtil;
 import io.mycat.jcache.util.UnSafeUtil;
 
 @SuppressWarnings("restriction")
-public class DefaultSlabsImpl implements Slabs {
+public class DefaultSlabsImpl implements Slabs,Runnable {
 	
 	private Logger logger = LoggerFactory.getLogger(DefaultSlabsImpl.class);	
 	
@@ -37,11 +44,14 @@ public class DefaultSlabsImpl implements Slabs {
 	 * Access to the slab allocator is protected by this lock
 	 */
 	private volatile static AtomicBoolean slabs_lock = new AtomicBoolean(false);
-	private volatile static AtomicBoolean slabs_rebalance_lock = new AtomicBoolean(false);
+	private  static Lock slabs_rebalance_lock = new ReentrantLock();
 
-	private static Object slab_rebalance_cond = new Object();
+	private static Condition slab_rebalance_cond = slabs_rebalance_lock.newCondition();
 	private volatile  static int do_run_slab_thread=1;
 	private volatile  static int do_run_slab_rebalance_thread=1;
+	private volatile int slab_rebalance_signal;
+	private static final int  DEFAULT_SLAB_BULK_CHECK =1;
+	private int slab_bulk_check = DEFAULT_SLAB_BULK_CHECK;
 	private static Thread rebalance_tid;
 	private SlabRebalance slab_rebal;
 	
@@ -524,7 +534,7 @@ public class DefaultSlabsImpl implements Slabs {
 			}
 			long p = getSlabClass(id);
 			long requested = SlabClassUtil.getRequested(p) - old + ntotal;
-			SlabClassUtil.decrRequested(p,requested);
+			SlabClassUtil.incrRequested(p,requested);
 		}finally {
 			slabs_lock.lazySet(false);
 		}
@@ -586,7 +596,463 @@ public class DefaultSlabsImpl implements Slabs {
 
 	@Override
 	public int start_slab_maintenance_thread() {
-		// TODO Auto-generated method stub
+		int ret;
+		slab_rebalance_signal=0;
+		slab_bulk_check =Integer.valueOf(System.getenv("MEMCACHED_SLAB_BULK_CHECK"));
+		if(slab_bulk_check==0){
+			slab_bulk_check = DEFAULT_SLAB_BULK_CHECK;
+		}
+		rebalance_tid = new Thread(this);
+		rebalance_tid.start();
+		return 0;
+	}
+
+	@Override
+	public void run() {
+		slab_rebalance_thead();
+	}
+
+	/* Slab mover thread.
+	 * Sits waiting for a condition to jump off and shovel some memory about
+	 */
+	private void slab_rebalance_thead() {
+		int was_busy=0;
+		/* So we first pass into cond_wait with the mutex held */
+		slabs_rebalance_lock.lock();
+		try {
+			while (do_run_slab_rebalance_thread > 0) {
+				if (slab_rebalance_signal == 1) {
+					if (slab_rebalance_start() < 0) {
+					 /* Handle errors with more specifity as required. */
+						slab_rebalance_signal = 0;
+					}
+
+					was_busy = 0;
+				} else if (slab_rebalance_signal > 0 && slab_rebal.getSlabStart() != 0) {
+					was_busy = slab_rebalance_move();
+				}
+
+				if (slab_rebal.getDone() > 0) {
+					slab_rebal_finish();
+				} else if (was_busy > 0) {
+				/* Stuck waiting for some items to unlock, so slow down a bit
+             * to give them a chance to free up */
+					try {
+						Thread.sleep(50 / 1000);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+
+				if (slab_rebalance_signal == 0) {
+				/* always hold this lock while we're running */
+					try {
+						slab_rebalance_cond.await();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		}finally {
+			slabs_rebalance_lock.unlock();
+		}
+
+	}
+
+	private void slab_rebal_finish() {
+		int rescues= 0;
+		int evictions_nomem=0;
+		int inline_reclaim=0;
+		int chunk_rescues=0;
+		long s_cls=0;
+		long d_cls=0;
+
+		while(!slabs_lock.compareAndSet(false,true)){}
+		try{
+			s_cls = getSlabClass(slab_rebal.getsClsid());
+			d_cls = getSlabClass(slab_rebal.getdClsid());
+
+			//TODO 是否需要这部分代码
+		/*	#ifdef DEBUG_SLAB_MOVER
+    *//* If the algorithm is broken, live items can sneak in. *//*
+			slab_rebal.slab_pos = slab_rebal.slab_start;
+			while (1) {
+				item *it = slab_rebal.slab_pos;
+				assert(it->it_flags == (ITEM_SLABBED|ITEM_FETCHED));
+				assert(memcmp(ITEM_key(it), "deadbeef", 8) == 0);
+				it->it_flags = ITEM_SLABBED|ITEM_FETCHED;
+				slab_rebal.slab_pos = (char *)slab_rebal.slab_pos + s_cls->size;
+				if (slab_rebal.slab_pos >= slab_rebal.slab_end)
+					break;
+			}
+			#endif*/
+
+			/* At this point the stolen slab is completely clear.
+			 * We always kill the "first"/"oldest" slab page in the slab_list, so
+			 * shuffle the page list backwards and decrement.
+			 */
+			SlabClassUtil.decrSlabs(s_cls);
+			for(int x=0;x<SlabClassUtil.getSlabs(s_cls);x++){
+				SlabClassUtil.setSlablistIndexValue(s_cls,x,SlabClassUtil.getSlabListIndexValue(s_cls,x+1));
+			}
+			SlabClassUtil.setSlablistIndexValue(d_cls,SlabClassUtil.getSlabs(d_cls),slab_rebal.getSlabStart());
+			 /* Don't need to split the page into chunks if we're just storing it */
+			if(slab_rebal.getdClsid()>Settings.SLAB_GLOBAL_PAGE_POOL){
+				UnSafeUtil.unsafe.setMemory(slab_rebal.getSlabStart(),Settings.itemSizeMax,(byte)0);
+				split_slab_page_into_freelist(slab_rebal.getSlabStart(),slab_rebal.getdClsid());
+			}else if(slab_rebal.getdClsid()==Settings.SLAB_GLOBAL_PAGE_POOL){
+				memory_release();
+			}
+			slab_rebal.setDone(0);
+			slab_rebal.setsClsid(0);
+			slab_rebal.setdClsid(0);
+			slab_rebal.setSlabStart(0);
+			slab_rebal.setSlabEnd(0);
+			slab_rebal.setSlabPos(0);
+			evictions_nomem = slab_rebal.getEvictionsNomem();
+			inline_reclaim = slab_rebal.getInlineReclaim();
+			rescues = slab_rebal.getRescues();
+			chunk_rescues = slab_rebal.getChunkRescues();
+			slab_rebal.setEvictionsNomem(0);
+			slab_rebal.setInlineReclaim(0);
+			slab_rebal.setRescues(0);
+
+			Stats.slabs_moved.addAndGet(1);
+			Stats.slab_reassign_rescues.addAndGet(rescues);
+			Stats.slab_reassign_evictions_nomem.addAndGet(evictions_nomem);
+			Stats.slab_reassign_inline_reclaim.addAndGet(inline_reclaim);
+			Stats.slab_reassign_chunk_rescues.addAndGet(chunk_rescues);
+			StatsState.slab_reassign_running.lazySet(false);
+			if(Settings.verbose>1){
+				logger.info("finished a slab move\n");
+			}
+		}finally {
+			slabs_lock.lazySet(false);
+		}
+
+
+
+	}
+
+	/* refcount == 0 is safe since nobody can incr while item_lock is held.
+	 * refcount != 0 is impossible since flags/etc can be modified in other
+	 * threads. instead, note we found a busy one and bail. logic in do_item_get
+	 * will prevent busy items from continuing to be busy
+	 * NOTE: This is checking it_flags outside of an item lock. I believe this
+	 * works since it_flags is 8 bits, and we're only ever comparing a single bit
+	 * regardless. ITEM_SLABBED bit will always be correct since we're holding the
+	 * lock which modifies that bit. ITEM_LINKED won't exist if we're between an
+	 * item having ITEM_SLABBED removed, and the key hasn't been added to the item
+	 * yet. The memory barrier from the slabs lock should order the key write and the
+	 * flags to the item?
+	 * If ITEM_LINKED did exist and was just removed, but we still see it, that's
+	 * still safe since it will have a valid key, which we then lock, and then
+	 * recheck everything.
+	 * This may not be safe on all platforms; If not, slabs_alloc() will need to
+	 * seed the item key while holding slabs_lock.
+	 */
+	private int slab_rebalance_move() {
+		int was_busy = 0;
+		int refcount = 0;
+		ReentrantLock hold_lock = null;
+		MOVE_STATUS status = MOVE_STATUS.MOVE_PASS;
+		long hv = 0;
+	try{
+		while (!slabs_lock.compareAndSet(false, true)) {
+		}
+		long s_cls = getSlabClass(slab_rebal.getsClsid());
+		for (int x = 0; x < slab_bulk_check; x++) {
+			long it = slab_rebal.getSlabPos();
+			long ch = 0;
+			status = MOVE_STATUS.MOVE_PASS;
+			if ((ItemUtil.getItflags(it) & ItemFlags.ITEM_CHUNK.getFlags()) > 0) {
+				/* This chunk is a chained part of a larger item. */
+				ch = ItemUtil.ITEM_data(it);
+				/* Instead, we use the head chunk to find the item and effectively
+				 * lock the entire structure. If a chunk has ITEM_CHUNK flag, its
+				 * head cannot be slabbed, so the normal routine is safe.
+				 */
+				it = ItemChunkUtil.getHead(ch);
+			}
+
+			/* ITEM_FETCHED when ITEM_SLABBED is overloaded to mean we've cleared
+			 * the chunk for move. Only these two flags should exist.
+			 */
+			if (ItemUtil.getItflags(it) != (ItemFlags.ITEM_SLABBED.getFlags() | ItemFlags.ITEM_FETCHED.getFlags())) {
+				 /* ITEM_SLABBED can only be added/removed under the slabs_lock */
+				if ((ItemUtil.getItflags(it) & ItemFlags.ITEM_SLABBED.getFlags()) > 0) {
+					slab_rebalance_cut_free(s_cls, it);
+					status = MOVE_STATUS.MOVE_FROM_SLAB;
+				} else if ((ItemUtil.getItflags(it) & ItemFlags.ITEM_LINKED.getFlags()) != 0) {
+					/* If it doesn't have ITEM_SLABBED, the item could be in any
+					 * state on its way to being freed or written to. If no
+					 * ITEM_SLABBED, but it's had ITEM_LINKED, it must be active
+					 * and have the key written to it already.
+					 */
+					hv = JcacheContext.getHash().hash(ItemUtil.getKey(it), ItemUtil.getNskey(it));
+					hold_lock = JcacheContext.getSegment().item_trylock(hv);
+					if (hold_lock == null) {
+						status = MOVE_STATUS.MOVE_LOCKED;
+					} else {
+						if (ItemUtil.incrRefCount(it) == 2) {
+							/* item is linked but not busy */
+							/* Double check ITEM_LINKED flag here, since we're
+							 * past a memory barrier from the mutex. */
+							if ((ItemUtil.getItflags(it) & ItemFlags.ITEM_LINKED.getFlags()) != 0) {
+								status = MOVE_STATUS.MOVE_FROM_LRU;
+							} else {
+								/* refcount == 1 + !ITEM_LINKED means the item is being
+								 * uploaded to, or was just unlinked but hasn't been freed
+								 * yet. Let it bleed off on its own and try again later */
+								status = MOVE_STATUS.MOVE_BUSY;
+							}
+						} else {
+							if (Settings.verbose > 2) {
+								logger.debug("Slab reassign hit a busy item:refcount: {} src: {} dst: {}", ItemUtil.getRefCount(it), slab_rebal.getsClsid(), slab_rebal.getdClsid());
+							}
+							status = MOVE_STATUS.MOVE_BUSY;
+						}
+						/* Item lock must be held while modifying refcount */
+						if (status == MOVE_STATUS.MOVE_BUSY) {
+							ItemUtil.decrRefCount(it);
+							JcacheContext.getSegment().item_unlock(hv);
+						}
+					}
+				} else {
+					/* See above comment. No ITEM_SLABBED or ITEM_LINKED. Mark
+                 	* busy and wait for item to complete its upload. */
+					status = MOVE_STATUS.MOVE_BUSY;
+				}
+			}
+
+			long new_it = 0;
+			int save_item = 0;
+			int ntotal = 0;
+			switch (status) {
+				case MOVE_FROM_LRU:
+					/* Lock order is LRU locks -> slabs_lock. unlink uses LRU lock.
+					 * We only need to hold the slabs_lock while initially looking
+					 * at an item, and at this point we have an exclusive refcount
+					 * (2) + the item is locked. Drop slabs lock, drop item to
+					 * refcount 1 (just our own, then fall through and wipe it
+					 */
+					/* Check if expired or flushed */
+					ntotal = ItemUtil.ITEM_ntotal(it);
+					/* REQUIRES slabs_lock: CHECK FOR cls->sl_curr > 0 */
+					if (ch == 0 && (ItemUtil.getItflags(it) & ItemFlags.ITEM_CHUNKED.getFlags()) > 0) {
+						/* Chunked should be identical to non-chunked, except we need
+                     * to swap out ntotal for the head-chunk-total. */
+						ntotal = SlabClassUtil.getSize(s_cls);
+					}
+					if ((ItemUtil.getExpTime(it) != 0 && ItemUtil.getExpTime(it) < System.currentTimeMillis())
+							|| item_is_flushed(it)) {
+						/* Expired, don't save. */
+						save_item = 0;
+					} else if (ch == 0 &&
+							(new_it = slab_rebalance_alloc(ntotal, slab_rebal.getsClsid())) == 0) {
+						/* Not a chunk of an item, and nomem. */
+						save_item = 0;
+						slab_rebal.setEvictionsNomem(slab_rebal.getEvictionsNomem() + 1);
+					} else if (ch != 0 &&
+							(new_it = slab_rebalance_alloc(SlabClassUtil.getSize(s_cls), slab_rebal.getsClsid())) == 0) {
+						/* Is a chunk of an item, and nomem. */
+						save_item = 0;
+						slab_rebal.setEvictionsNomem(slab_rebal.getEvictionsNomem() + 1);
+					} else {
+						/* Was whatever it was, and we have memory for it. */
+						save_item = 1;
+					}
+					int requested_adjust = 0;
+					if (save_item > 0) {
+						if (ch == 0) {
+							UnSafeUtil.copyMemory(it, new_it, ntotal);
+							ItemUtil.setPrev(new_it, 0);
+							ItemUtil.setNext(new_it, 0);
+							ItemUtil.setHNext(new_it, 0);
+							 /* These are definitely required. else fails assert */
+							ItemUtil.setItflags(it, (byte) (ItemUtil.getItflags(new_it) & ~ItemFlags.ITEM_LINKED.getFlags()));
+							ItemUtil.setRefCount(new_it, 0);
+							JcacheContext.getItemsAccessManager().item_replace(it, new_it, hv);
+							/* Need to walk the chunks and repoint head  */
+							if ((ItemUtil.getItflags(new_it) & ItemFlags.ITEM_CHUNKED.getFlags()) > 0) {
+								long fch = ItemUtil.ITEM_data(it);
+								ItemChunkUtil.setPrev(ItemChunkUtil.getNext(fch), fch);
+								while (fch != 0) {
+									ItemChunkUtil.setHead(fch, new_it);
+									fch = ItemChunkUtil.getNext(fch);
+								}
+							}
+							ItemUtil.setRefCount(it, 0);
+							ItemUtil.setItflags(it, (byte) (ItemFlags.ITEM_SLABBED.getFlags() | ItemFlags.ITEM_FETCHED.getFlags()));
+							slab_rebal.setRescues(slab_rebal.getRescues() + 1);
+							requested_adjust = ntotal;
+						} else {
+							long nch = ItemUtil.ITEM_data(new_it);
+							/* Chunks always have head chunk (the main it) */
+							ItemChunkUtil.setNext(ItemChunkUtil.getPrev(ch), nch);
+							if (ItemChunkUtil.getNext(ch) != 0) {
+								ItemChunkUtil.setPrev(ItemChunkUtil.getNext(ch), nch);
+							}
+							UnSafeUtil.copyMemory(ch, nch, ItemChunkUtil.getUsed(ch) + ItemChunkUtil.getNtotal());
+							ItemChunkUtil.setRefcount(ch, (short) 0);
+							ItemChunkUtil.setItFlags(ch, (byte) (ItemFlags.ITEM_SLABBED.getFlags() | ItemFlags.ITEM_FETCHED.getFlags()));
+							slab_rebal.setChunkRescues(slab_rebal.getChunkRescues() + 1);
+							ItemUtil.decrRefCount(it);
+							requested_adjust = SlabClassUtil.getSize(s_cls);
+						}
+					} else {
+						/* restore ntotal in case we tried saving a head chunk. */
+						ntotal = ItemUtil.ITEM_ntotal(it);
+						JcacheContext.getItemsAccessManager().item_unlink(it);
+						JcacheContext.getSlabPool().slabs_free(it, ntotal, slab_rebal.getsClsid());
+						/* Swing around again later to remove it from the freelist. */
+						slab_rebal.setBusyItems(slab_rebal.getBusyItems() + 1);
+						was_busy++;
+					}
+					/* Always remove the ntotal, as we added it in during
+					 * do_slabs_alloc() when copying the item.
+					 */
+					SlabClassUtil.decrRequested(s_cls, SlabClassUtil.getRequested(s_cls) - requested_adjust);
+					break;
+				case MOVE_FROM_SLAB:
+					ItemUtil.setRefCount(it, 0);
+					ItemUtil.setItflags(it, (byte) (ItemFlags.ITEM_SLABBED.getFlags() | ItemFlags.ITEM_FETCHED.getFlags()));
+					break;
+				case MOVE_BUSY:
+				case MOVE_LOCKED:
+					slab_rebal.setBusyItems(slab_rebal.getBusyItems() + 1);
+					was_busy++;
+					break;
+				case MOVE_PASS:
+					break;
+			}
+			slab_rebal.setSlabPos(slab_rebal.getSlabPos() + SlabClassUtil.getSize(s_cls));
+			if (slab_rebal.getSlabPos() > slab_rebal.getSlabEnd()) {
+				break;
+			}
+		}
+		if (slab_rebal.getSlabPos() >= slab_rebal.getSlabEnd()) {
+			/* Some items were busy, start again from the top */
+			if (slab_rebal.getBusyItems() > 0) {
+				slab_rebal.setSlabPos(slab_rebal.getSlabStart());
+				Stats.slab_reassign_busy_items.addAndGet(slab_rebal.getBusyItems());
+				slab_rebal.setBusyItems(0);
+			} else {
+				slab_rebal.setDone(slab_rebal.getDone() + 1);
+			}
+		}
+	}finally{
+		slabs_lock.lazySet(false);
+	}
+		return was_busy;
+	}
+
+	/* CALLED WITH slabs_lock HELD */
+	private long slab_rebalance_alloc(int size, int id) {
+		long s_cls = getSlabClass(slab_rebal.getsClsid());
+		long new_it=0;
+		int slabs = SlabClassUtil.getPerslab(s_cls);
+		for(int x=0;x<slabs;x++){
+			new_it = JcacheContext.getSlabPool().slabs_alloc(size,id,0,Slabs.SLABS_ALLOC_NO_NEWPAGE);
+			 /* check that memory isn't within the range to clear */
+			if(new_it==0){
+				break;
+			}
+			if(new_it>=slab_rebal.getSlabStart() && new_it<slab_rebal.getSlabEnd()){
+				/* Pulled something we intend to free. Mark it as freed since
+				 * we've already done the work of unlinking it from the freelist.
+				 */
+				SlabClassUtil.decrRequested(s_cls,Long.valueOf(String.valueOf(size)).longValue());
+				ItemUtil.setRefCount(new_it,0);
+				ItemUtil.setItflags(new_it,(byte)(ItemFlags.ITEM_SLABBED.getFlags() | ItemFlags.ITEM_FETCHED.getFlags()));
+				new_it=0;
+				slab_rebal.setInlineReclaim(slab_rebal.getInlineReclaim()+ 1);
+			}else{
+				break;
+			}
+		}
+		return new_it;
+	}
+
+	private boolean item_is_flushed(long itemaddr){
+		long oldest_live = Settings.oldestLive;
+		long cas = ItemUtil.getCAS(itemaddr);
+		long oldest_cas = Settings.oldestCas;
+		long time = ItemUtil.getTime(itemaddr);
+
+		if (oldest_live == 0 || oldest_live > System.currentTimeMillis())
+			return false;
+		if ((time <= oldest_live)
+				|| (oldest_cas != 0 && cas != 0 && cas < oldest_cas)) {
+			return true;
+		}
+		return false;
+	}
+
+	/* CALLED WITH slabs_lock HELD */
+	/* detatches item/chunk from freelist. */
+	private void slab_rebalance_cut_free(long s_cls, long it) {
+	 	/* Ensure this was on the freelist and nothing else. */
+		if(SlabClassUtil.getSlots(s_cls) == it){
+			long next = ItemUtil.getNext(it);
+			SlabClassUtil.setSlots(s_cls,next);
+		}
+		//if (it->next) it->next->prev = it->prev;
+		ItemUtil.setPrev(ItemUtil.getNext(it),ItemUtil.getPrev(it));
+		//if (it->prev) it->prev->next = it->next;
+		ItemUtil.setNext(ItemUtil.getPrev(it),ItemUtil.getNext(it));
+		SlabClassUtil.decrSlCurr(s_cls);
+	}
+
+	private int slab_rebalance_start() {
+		int no_go=0;
+		long s_cls;
+		while(!slabs_lock.compareAndSet(false,true)){}
+		try{
+			try {
+				if (slab_rebal.getsClsid() < Settings.POWER_LARGEST
+						|| slab_rebal.getsClsid() > power_largest
+						|| slab_rebal.getdClsid() < Settings.SLAB_GLOBAL_PAGE_POOL
+						|| slab_rebal.getdClsid() > power_largest
+						|| slab_rebal.getsClsid() == slab_rebal.getdClsid()) {
+					no_go = 2;
+				}
+				s_cls = getSlabClass(slab_rebal.getsClsid());
+
+				if (!grow_slab_list(slab_rebal.getdClsid())) {
+					no_go = -1;
+				}
+
+				if (SlabClassUtil.getSlabs(s_cls) < 2) {
+					no_go = -3;
+				}
+			}finally{
+					if(no_go!=0) {
+						slabs_lock.lazySet(false);
+						return no_go;
+					}
+			}
+
+
+			/* Always kill the first available slab page as it is most likely to
+			* contain the oldest items
+			*/
+			slab_rebal.setSlabStart(SlabClassUtil.getSlabListIndexValue(s_cls,0));
+			slab_rebal.setSlabEnd(slab_rebal.getSlabStart()+
+					(SlabClassUtil.getSize(s_cls)+SlabClassUtil.getPerslab(s_cls)));
+			slab_rebal.setSlabPos(slab_rebal.getSlabStart());
+			slab_rebal.setDone(0);
+
+			 /* Also tells do_item_get to search for items in this slab */
+			slab_rebalance_signal=2;
+
+			if(Settings.verbose>1){
+				logger.error("Started a slab rebalance\n");
+			}
+		}finally{
+				slabs_lock.lazySet(false);
+		}
+		while(!StatsState.slab_reassign_running.compareAndSet(false,true)){};
 		return 0;
 	}
 
@@ -596,17 +1062,17 @@ public class DefaultSlabsImpl implements Slabs {
  	* */
 	@Override
 	public void stop_slab_maintenance_thread() {
-		while(!(slabs_rebalance_lock.compareAndSet(false,true))){}
+		slabs_rebalance_lock.lock();
 		try{
 			do_run_slab_thread=0;
 			do_run_slab_rebalance_thread=0;
-			slab_rebalance_cond.notify();
+			slab_rebalance_cond.signal();
 		}finally {
-			slabs_rebalance_lock.lazySet(false);
+			slabs_rebalance_lock.unlock();
 		}
 		/* Wait for the maintenance thread to stop */
 		try {
-			rebalance_tid.join();//TODO REVIEW
+			rebalance_tid.join();
 		} catch (InterruptedException e) {
 			logger.error("stop thread error",e);
 			e.printStackTrace();
@@ -615,19 +1081,79 @@ public class DefaultSlabsImpl implements Slabs {
 
 	@Override
 	public REASSIGN_RESULT_TYPE slabs_reassign(int src, int dst) {
-		// TODO Auto-generated method stub
-		return null;
+		REASSIGN_RESULT_TYPE ret;
+		try {
+			if (!slabs_rebalance_lock.tryLock()) {
+				return REASSIGN_RESULT_TYPE.REASSIGN_RUNNING;
+			}
+			ret = do_slabs_reassign(src, dst);
+		}finally {
+			slabs_rebalance_lock.unlock();
+		}
+
+		return ret;
 	}
 
+	private REASSIGN_RESULT_TYPE do_slabs_reassign(int src, int dst) {
+		if(slab_rebalance_signal!=0){
+			return REASSIGN_RESULT_TYPE.REASSIGN_RUNNING;
+		}
+		if(src==dst){
+			return REASSIGN_RESULT_TYPE.REASSIGN_SRC_DST_SAME;
+		}
+
+		  /* Special indicator to choose ourselves. */
+		if(src==-1){
+			src = slabs_reassign_pick_any(dst);
+			/* TODO: If we end up back at -1, return a new error type */
+		}
+		if (src < Settings.POWER_SMALLEST  || src > power_largest ||
+				dst < Settings.SLAB_GLOBAL_PAGE_POOL || dst > power_largest){
+			return REASSIGN_RESULT_TYPE.REASSIGN_BADCLASS;
+		}
+		if(SlabClassUtil.getSlabs(src)<2){
+			return REASSIGN_RESULT_TYPE.REASSIGN_NOSPARE;
+		}
+		slab_rebal.setsClsid(src);
+		slab_rebal.setdClsid(dst);
+
+		slab_rebalance_signal=1;
+		slab_rebalance_cond.signal();
+
+		return REASSIGN_RESULT_TYPE.REASSIGN_OK;
+	}
+
+	/* Iterate at most once through the slab classes and pick a "random" source.
+ 	* I like this better than calling rand() since rand() is slow enough that we
+ 	* can just check all of the classes once instead.
+ 	*/
+	private int slabs_reassign_pick_any(int dst) {
+		int cur = Settings.POWER_SMALLEST-1;
+		int tries = power_largest-Settings.POWER_SMALLEST+1;
+		for(;tries>0;tries--){
+			cur++;
+			if(cur>power_largest){
+				cur=Settings.POWER_SMALLEST;
+			}
+			if(cur==dst){
+				continue;
+			}
+			if(SlabClassUtil.getSlabs(cur)>1){
+				return cur;
+			}
+		}
+		return -1;
+	}
+
+	/* If we hold this lock, rebalancer can't wake up or move */
 	@Override
 	public void slabs_rebalancer_pause() {
-		// TODO Auto-generated method stub
-
+		slabs_rebalance_lock.lock();
 	}
 
 	@Override
 	public void slabs_rebalancer_resume() {
-		// TODO Auto-generated method stub
+		slabs_rebalance_lock.unlock();
 
 	}
 

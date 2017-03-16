@@ -311,4 +311,8 @@ public class UnSafeUtil {
     public static void putAddress(long addr,long value){
     	unsafe.putAddress(addr, value);
     }
+
+	public static void copyMemory(long srcAddr,long dstAddr,long bytes){
+		unsafe.copyMemory(srcAddr,dstAddr,bytes);
+	}
 }

@@ -129,7 +129,13 @@ public class ItemsImpl implements Items{
 	    /* This is a race in order to simplify lru_pull_tail; in cases where
 	     * locked items are on the tail, you want them to fall out and cause
 	     * occasional OOM's, rather than internally work around them.
-	     * This also gives one fewer code path for slab alloc/free
+	     * This also gives one fewer code path for slames? or a number of times
+	     * based on how many chunks the new object should take up?
+	     * or based on the size of an object lru_pull_tail() says it evicted?
+	     * This is a classical GC problem if "large items" are of too varying of
+	     * sizes. This is actually okay here since the larger the data, the more
+	     * bandwidth it takes, the more time we can loop in comparison to serving
+	     * and replacing small items.b alloc/free
 	     */
 	    /* TODO: if power_largest, try a lot more times? or a number of times
 	     * based on how many chunks the new object should take up?
