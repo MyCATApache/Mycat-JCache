@@ -352,7 +352,7 @@ public class AssocImpl implements Assoc,Runnable{
 	private static void pause_threads(PAUSE_THREAD_TYPES type){
 		switch(type){
 		case PAUSE_ALL_THREADS:
-//			slabs_rebalancer_pause(); TODO
+			JcacheContext.getSlabPool().slabs_rebalancer_pause();
 //			lru_crawler_pause();
 //			lru_maintainer_pause();
 			return;
