@@ -72,7 +72,7 @@ public class JcacheMain
     	 */
     	ConfigLoader.loadProperties(null);
     	
-        /* lru爬出初始化 */
+        /* lru爬虫初始化 */
         init_lru_crawler();
         init_lru_maintainer();
     	
@@ -150,14 +150,12 @@ public class JcacheMain
 	}
     
     private static int init_lru_crawler(){
-    	if (lru_crawler_initialized == 0) {
-            lru_crawler_initialized = 1;
-        }
+    	JcacheContext.getCrawlersAccessManager().init_lru_crawler();
         return 0;
     }
     
     private static void init_lru_maintainer(){
-    	//TODO
+    	JcacheContext.getItemsAccessManager().do_lru_init();
     }
     
     

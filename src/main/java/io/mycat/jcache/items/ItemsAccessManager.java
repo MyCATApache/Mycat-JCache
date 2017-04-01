@@ -462,4 +462,8 @@ public class ItemsAccessManager {
 			}
 		}
 	}
+	
+	public void do_lru_init(){
+		items.init_lru_maintainer();
+	}
 }

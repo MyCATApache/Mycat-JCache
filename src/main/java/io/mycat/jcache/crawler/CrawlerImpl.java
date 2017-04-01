@@ -14,6 +14,8 @@ public class CrawlerImpl implements Crawler {
 	
 	static volatile int do_run_lru_crawler_thread = 0;
 	private static AtomicBoolean lru_crawler_lock = new AtomicBoolean(false);
+	static int lru_crawler_initialized = 0;
+	CrawlerModuleT active_crawler_mod;
 	
 	class ItemCrawlerThread implements Runnable {
 
@@ -65,8 +67,18 @@ public class CrawlerImpl implements Crawler {
 
 	@Override
 	public int init_lru_crawler() {
-		// TODO Auto-generated method stub
-		return 0;
+		if (lru_crawler_initialized == 0) {
+//	       if (pthread_cond_init(&lru_crawler_cond, NULL) != 0) {
+//	            fprintf(stderr, "Can't initialize lru crawler condition\n");
+//	            return -1;
+//	        }
+//	        pthread_mutex_init(&lru_crawler_lock, NULL);
+//	        active_crawler_mod.c.c = null;
+//	        active_crawler_mod.mod = null;
+//	        active_crawler_mod.data = null;
+	        lru_crawler_initialized = 1;
+	    }
+	    return 0;
 	}
 
 	@Override

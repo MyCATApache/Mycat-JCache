@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import io.mycat.jcache.crawler.CrawlersAccessManager;
 import io.mycat.jcache.enums.hash.Hash_func_type;
 import io.mycat.jcache.hash.Assoc;
 import io.mycat.jcache.hash.Hash;
@@ -32,6 +33,11 @@ public class JcacheContext {
 	 * item 访问器
 	 */
 	private static ItemsAccessManager itemsAccessManager = new ItemsAccessManager();
+
+	/**
+	 * item 访问器
+	 */
+	private static CrawlersAccessManager crawlersAccessManager = new CrawlersAccessManager();
 	
 	/**
 	 * hashtable
@@ -99,6 +105,14 @@ public class JcacheContext {
 
 	public static void setItemsAccessManager(ItemsAccessManager itemsAccessManager) {
 		JcacheContext.itemsAccessManager = itemsAccessManager;
+	}
+
+	public static CrawlersAccessManager getCrawlersAccessManager() {
+		return crawlersAccessManager;
+	}
+	
+	public static void setItemsAccessManager(CrawlersAccessManager crawlersAccessManager) {
+		JcacheContext.crawlersAccessManager = crawlersAccessManager;
 	}
 	
 	public static Assoc getAssoc(){
