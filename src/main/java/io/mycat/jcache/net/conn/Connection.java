@@ -41,31 +41,31 @@ public class Connection implements Closeable, Runnable {
 
     private SelectionKey selectionKey;
     protected final SocketChannel channel;
-    private ByteBuffer writeBuffer;  //写缓冲区 
-    protected ByteBuffer readBuffer; /* 读缓冲区  默认 2048 会扩容    */
-    private int lastMessagePos; // readBuffer 最后读取位置
+    private ByteBuffer writeBuffer;  //鍐欑紦鍐插尯 
+    protected ByteBuffer readBuffer; /* 璇荤紦鍐插尯  榛樿 2048 浼氭墿瀹�    */
+    private int lastMessagePos; // readBuffer 鏈�鍚庤鍙栦綅缃�
     
     private LinkedList<ByteBuffer> writeQueue = new LinkedList<ByteBuffer>();
     private AtomicBoolean writingFlag = new AtomicBoolean(false);
     private long id;
     private boolean isClosed;
-    private IOHandler ioHandler;  //io 协议处理类
-    private Protocol protocol;  //协议类型
+    private IOHandler ioHandler;  //io 鍗忚澶勭悊绫�
+    private Protocol protocol;  //鍗忚绫诲瀷
     
     private CommandType curCommand; /* current command beging processed */
-    private int subCmd; /* 用于add set replace cas  */
+    private int subCmd; /* 鐢ㄤ簬add set replace cas  */
     private long cas; /* th cas to return */
     private CONN_STATES state;
     private CONN_STATES write_and_go;  /** which state to go into after finishing current write */
     private BIN_SUBSTATES substate;
-    private boolean noreply; /* True if the reply should not be sent. */
+    private boolean noreply = false; /* True if the reply should not be sent. */
     private long item;
     private int rlbytes;/* how many bytes to swallow */  
     
     /**
-     * 二进制请求头
+     * 浜岃繘鍒惰姹傚ご
      */
-    private BinaryRequestHeader binaryHeader = new BinaryRequestHeader();  //当前连接的多个请求 使用同一个 header 对象， 减少对象创建
+    private BinaryRequestHeader binaryHeader = new BinaryRequestHeader();  //褰撳墠杩炴帴鐨勫涓姹� 浣跨敤鍚屼竴涓� header 瀵硅薄锛� 鍑忓皯瀵硅薄鍒涘缓
 
     public Connection(SocketChannel channel) {
 
@@ -78,9 +78,9 @@ public class Connection implements Closeable, Runnable {
     	
     	readBuffer = ByteBuffer.allocate(DATA_BUFFER_SIZE);
     	writeBuffer = ByteBuffer.allocate(DATA_BUFFER_SIZE);
-        selectionKey = channel.register(selector, SelectionKey.OP_READ);  //注册读事件监听
-        // 绑定会话
-        selectionKey.attach(this);  //会在 reactor 中被调用
+        selectionKey = channel.register(selector, SelectionKey.OP_READ);  //娉ㄥ唽璇讳簨浠剁洃鍚�
+        // 缁戝畾浼氳瘽
+        selectionKey.attach(this);  //浼氬湪 reactor 涓璋冪敤
         if (ioHandler != null) {
             ioHandler.onConnected(this);
         }
@@ -95,7 +95,7 @@ public class Connection implements Closeable, Runnable {
        try {
     	   while(!stop){
         	   switch(state){
-    	    	   case conn_listening:   // 无效状态
+    	    	   case conn_listening:   // 鏃犳晥鐘舵��
     	    		   stop = true;
     	    		   break;
     	    	   case conn_waiting:
@@ -103,14 +103,14 @@ public class Connection implements Closeable, Runnable {
     	    		   state = CONN_STATES.conn_read;
     	    		   stop = true;
     	    		   break;
-    	    	   case conn_nread:  //  文本命令 telnet 会进入到该状态
+    	    	   case conn_nread:  //  鏂囨湰鍛戒护 telnet 浼氳繘鍏ュ埌璇ョ姸鎬�
     	    		   selectionKey.interestOps(selectionKey.interestOps() | SelectionKey.OP_READ);
     	    		   res = try_read_network();
     	    		   switch(res){
 	    	    		   case READ_NO_DATA_RECEIVED:
 	    	    			   stop = true;
 	    	    			   break;
-	    	    		   case READ_DATA_RECEIVED:   /* 数据读取完成,开始 处理value 部分 */
+	    	    		   case READ_DATA_RECEIVED:   /* 鏁版嵁璇诲彇瀹屾垚,寮�濮� 澶勭悊value 閮ㄥ垎 */
 	    	    			   ioHandler.doReadHandler(this);
 	    	    			   break;
 	    	    		   case READ_ERROR:
@@ -127,7 +127,7 @@ public class Connection implements Closeable, Runnable {
 	    	    		   case READ_NO_DATA_RECEIVED:
 	    	    			   state = CONN_STATES.conn_waiting;
 	    	    			   break;
-	    	    		   case READ_DATA_RECEIVED:   /* 数据读取完成,开始解析命令 */
+	    	    		   case READ_DATA_RECEIVED:   /* 鏁版嵁璇诲彇瀹屾垚,寮�濮嬭В鏋愬懡浠� */
 	    	    			   state = CONN_STATES.conn_parse_cmd;
 	    	    			   break;
 	    	    		   case READ_ERROR:
@@ -187,6 +187,7 @@ public class Connection implements Closeable, Runnable {
 		}
     }
     
+    
     /*
      * read from network as much as we can, handle buffer overflow and connection
      * close.
@@ -218,7 +219,7 @@ public class Connection implements Closeable, Runnable {
                 	newReadBuffer.position(readBuffer.position());
                 	readBuffer = newReadBuffer;
                 	newReadBuffer = null;
-                	setLastMessagePos(0);  //扩容后,重置最后一次读取位置
+                	setLastMessagePos(0);  //鎵╁鍚�,閲嶇疆鏈�鍚庝竴娆¤鍙栦綅缃�
             	}else if (readBuffer.limit() < readBuffer.capacity()
                         && readBuffer.position() == readBuffer.limit()) {
                     readBuffer.limit(readBuffer.capacity());
@@ -249,7 +250,7 @@ public class Connection implements Closeable, Runnable {
     }
     
     private boolean try_read_command() throws IOException{
-        // 处理指令
+        // 澶勭悊鎸囦护
 //      readBuffer.flip();
       if(Objects.equals(Settings.binding_protocol,Protocol.negotiating)){
           byte magic = readBuffer.array()[0];
@@ -259,7 +260,7 @@ public class Connection implements Closeable, Runnable {
     }
 
     /**
-     * 商定协议
+     * 鍟嗗畾鍗忚
      */
     private void dynamicProtocol(byte magic) {
         if ((magic & 0xff) == (ProtocolMagic.PROTOCOL_BINARY_REQ.getByte() & 0xff)) {
@@ -271,7 +272,7 @@ public class Connection implements Closeable, Runnable {
     }
 
     /**
-     * 异步写
+     * 寮傛鍐�
      *
      * @throws IOException
      */
@@ -317,7 +318,7 @@ public class Connection implements Closeable, Runnable {
             } else {
                 ByteBuffer buf = writeQueue.removeFirst();
                 buf.flip();
-                writeToChannel(buf);  //TODO 可以优化成非递归方式
+                writeToChannel(buf);  //TODO 鍙互浼樺寲鎴愰潪閫掑綊鏂瑰紡
             }
         }
     }
@@ -362,11 +363,11 @@ public class Connection implements Closeable, Runnable {
     }
 
     /**
-     * 清理资源
+     * 娓呯悊璧勬簮
      */
 
     protected void cleanup() {
-        // 清理资源占用
+        // 娓呯悊璧勬簮鍗犵敤
         if (readBuffer != null) {
 //        	readBuffer.recycle();
             readBuffer = null;
@@ -395,7 +396,7 @@ public class Connection implements Closeable, Runnable {
     }
 
     /**
-     * 将回写数据加入的写队列中
+     * 灏嗗洖鍐欐暟鎹姞鍏ョ殑鍐欓槦鍒椾腑
      */
     public void addWriteQueue(ByteBuffer buffer) {
         writeQueue.add(buffer);

@@ -103,6 +103,7 @@ public class AsciiIOHanlder implements IOHandler {
 		}
 		return true;
 	}
+
 	
 	public void doReadValue(Connection conn,String value) throws IOException{
 		ByteBuffer readBuffer = conn.getReadDataBuffer();
@@ -181,11 +182,24 @@ public class AsciiIOHanlder implements IOHandler {
 		}
 	}
 	
+	private boolean set_noreply_maybe(Connection conn,String[] params){
+	    int noreply_index = params.length - 1;
+
+	    String ReplyStr = new String("noreply");
+	    if (!params[noreply_index].isEmpty() 
+	    		&& (params[noreply_index].equals(ReplyStr))){
+	    	conn.setNoreply(true);
+	    }
+	    
+	    return conn.isNoreply();
+	}
+	
 	private void process_touch_command(Connection conn,String[] params)throws IOException{
 		String key = params[1];
 		int nkey = key.length();
 		long exptime = 0;
 		long it;
+		set_noreply_maybe(conn,params);
 		if(nkey > JcacheGlobalConfig.KEY_MAX_LENGTH){
 			out_string(conn,badformat);
 			return;
@@ -222,6 +236,7 @@ public class AsciiIOHanlder implements IOHandler {
 		String key = params[1];
 		int nkey = key.length();
 		byte[] tmpbuf = new byte[8];
+		set_noreply_maybe(conn,params);
 		if(nkey > JcacheGlobalConfig.KEY_MAX_LENGTH){
 			out_string(conn,badformat);
 			return;
@@ -268,7 +283,7 @@ public class AsciiIOHanlder implements IOHandler {
 	
 	private void process_flush_command(Connection conn,String[] params){
         long new_oldest = 0;
-		
+        set_noreply_maybe(conn,params);
 		if(!Settings.flushEnabled){
 			out_string(conn,FLUSH_FORBIDDEN);
 			return;
@@ -307,6 +322,7 @@ public class AsciiIOHanlder implements IOHandler {
 		long it;
 		key = params[1];
 		nkey = key.length();
+		set_noreply_maybe(conn,params);
 		if(nkey > JcacheGlobalConfig.KEY_MAX_LENGTH){
 			out_string(conn,badformat);
 			return;
@@ -373,10 +389,12 @@ public class AsciiIOHanlder implements IOHandler {
 		long it;
 		String key = params[1];
 		int nkey = params[1].length();
+		set_noreply_maybe(conn,params);
 		if(nkey > JcacheGlobalConfig.KEY_MAX_LENGTH){
 			out_string(conn,badformat);
 			return;
 		}
+		
 		
 		int flags = Integer.parseInt(params[2]);
 		exptime = Long.parseLong(params[3]);
@@ -438,6 +456,12 @@ public class AsciiIOHanlder implements IOHandler {
 	}
 	
 	private void out_string(Connection conn,ByteBuffer badformat){
+		if(conn.isNoreply())
+		{
+			conn.setState(CONN_STATES.conn_new_cmd);
+			conn.setNoreply(false);
+			return;
+		}
 		ByteBuffer formet = badformat.slice();
 		formet.position(formet.limit());
 		conn.addWriteQueue(formet);
