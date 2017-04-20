@@ -62,8 +62,8 @@ public class AsciiIOHanlder implements IOHandler {
 	private static ByteBuffer FLUSH_FORBIDDEN = ByteBuffer.wrap("CLIENT_ERROR flush_all not allowed.\r\n".getBytes());
 
 	/**
-	 * 鏂囨湰鍗忚澶勭悊
-	 * TODO 缂栫爜/瑙ｇ爜閮ㄥ垎鎺ュ彛鍖栵紝鍏敤鍖�  澶勭悊
+	 * 鏂囨湰鍗忚澶勭�?
+	 * TODO 缂栫�?瑙ｇ爜閮ㄥ垎鎺ュ彛鍖栵紝鍏敤鍖�? 澶勭�?
 	 * @param conn
 	 * @param buffer
 	 * @return boolean  鏄惁闇�瑕佺户缁鍙栧懡浠�, true 缁х画璇诲彇鍛戒护,涓嶆竻绌哄綋鍓嶇紦鍐插尯,false 璁剧疆lastMessagePos 鎵ц涓嬩竴涓姸鎬�
@@ -103,7 +103,6 @@ public class AsciiIOHanlder implements IOHandler {
 		}
 		return true;
 	}
-
 	
 	public void doReadValue(Connection conn,String value) throws IOException{
 		ByteBuffer readBuffer = conn.getReadDataBuffer();
@@ -138,7 +137,7 @@ public class AsciiIOHanlder implements IOHandler {
 	
 	/**
 	 * 鍛戒护鐨勮В鏋愬鐞�
-	 * TODO 澧炲姞  閾惧紡澶勭悊璁捐妗嗘灦
+	 * TODO 澧炲�? 閾惧紡澶勭悊璁捐妗嗘灦
 	 * @param conn
 	 * @param readedLine
 	 */
@@ -375,7 +374,7 @@ public class AsciiIOHanlder implements IOHandler {
 				.append(new String(ItemUtil.getValue(it))).append("\r\n");
 				addWriteQueue(conn,ByteBuffer.wrap(result.toString().getBytes()));
 				JcacheContext.getItemsAccessManager().item_remove(it);  //refcount --;
-				JcacheContext.getItemsAccessManager().item_update(it);  // 鏇存柊 鏈�杩戣闂椂闂�
+				JcacheContext.getItemsAccessManager().item_update(it);  // 鏇存�?鏈�杩戣闂椂闂�
 			}
 		}
 		
@@ -394,7 +393,6 @@ public class AsciiIOHanlder implements IOHandler {
 			out_string(conn,badformat);
 			return;
 		}
-		
 		
 		int flags = Integer.parseInt(params[2]);
 		exptime = Long.parseLong(params[3]);
