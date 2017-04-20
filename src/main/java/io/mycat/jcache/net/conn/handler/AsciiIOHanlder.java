@@ -374,7 +374,7 @@ public class AsciiIOHanlder implements IOHandler {
 				.append(new String(ItemUtil.getValue(it))).append("\r\n");
 				addWriteQueue(conn,ByteBuffer.wrap(result.toString().getBytes()));
 				JcacheContext.getItemsAccessManager().item_remove(it);  //refcount --;
-				JcacheContext.getItemsAccessManager().item_update(it);  // 鏇存�?鏈�杩戣闂椂闂�
+				JcacheContext.getItemsAccessManager().item_update(it);  // 更新 最近访问时�?
 			}
 		}
 		
@@ -445,7 +445,6 @@ public class AsciiIOHanlder implements IOHandler {
 		conn.setSubCmd(comm);
 		conn.setWrite_and_go(CONN_STATES.conn_nread);
 	}
-	
 	
 	private void addWriteQueue(Connection conn,ByteBuffer badformat){
 		ByteBuffer formet = badformat.slice();
