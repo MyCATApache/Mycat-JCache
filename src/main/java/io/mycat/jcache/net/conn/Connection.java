@@ -42,14 +42,14 @@ public class Connection implements Closeable, Runnable {
     private SelectionKey selectionKey;
     protected final SocketChannel channel;
     private ByteBuffer writeBuffer;  //写缓冲区 
-    protected ByteBuffer readBuffer; /* 读缓冲区  默认 2048 会扩�?   */
-    private int lastMessagePos; // readBuffer 最后读取位�?
+    protected ByteBuffer readBuffer; /* 读缓冲区  默认 2048 会扩容    */
+    private int lastMessagePos; // readBuffer 最后读取位置
     
     private LinkedList<ByteBuffer> writeQueue = new LinkedList<ByteBuffer>();
     private AtomicBoolean writingFlag = new AtomicBoolean(false);
     private long id;
     private boolean isClosed;
-    private IOHandler ioHandler;  //io 协议处理�?
+    private IOHandler ioHandler;  //io 协议处理类
     private Protocol protocol;  //协议类型
     
     private CommandType curCommand; /* current command beging processed */
@@ -65,7 +65,7 @@ public class Connection implements Closeable, Runnable {
     /**
      * 二进制请求头
      */
-    private BinaryRequestHeader binaryHeader = new BinaryRequestHeader();  //当前连接的多个请�?使用同一�?header 对象�?减少对象创建
+    private BinaryRequestHeader binaryHeader = new BinaryRequestHeader();  //当前连接的多个请求 使用同一个 header 对象， 减少对象创建
 
     public Connection(SocketChannel channel) {
 
@@ -78,7 +78,7 @@ public class Connection implements Closeable, Runnable {
     	
     	readBuffer = ByteBuffer.allocate(DATA_BUFFER_SIZE);
     	writeBuffer = ByteBuffer.allocate(DATA_BUFFER_SIZE);
-        selectionKey = channel.register(selector, SelectionKey.OP_READ);  //注册读事件监�?
+        selectionKey = channel.register(selector, SelectionKey.OP_READ);  //注册读事件监听
         // 绑定会话
         selectionKey.attach(this);  //会在 reactor 中被调用
         if (ioHandler != null) {
@@ -95,7 +95,7 @@ public class Connection implements Closeable, Runnable {
        try {
     	   while(!stop){
         	   switch(state){
-    	    	   case conn_listening:   // 无效状�?
+    	    	   case conn_listening:   // 无效状态
     	    		   stop = true;
     	    		   break;
     	    	   case conn_waiting:
@@ -103,14 +103,14 @@ public class Connection implements Closeable, Runnable {
     	    		   state = CONN_STATES.conn_read;
     	    		   stop = true;
     	    		   break;
-    	    	   case conn_nread:  //  文本命令 telnet 会进入到该状�?
+    	    	   case conn_nread:  //  文本命令 telnet 会进入到该状态
     	    		   selectionKey.interestOps(selectionKey.interestOps() | SelectionKey.OP_READ);
     	    		   res = try_read_network();
     	    		   switch(res){
 	    	    		   case READ_NO_DATA_RECEIVED:
 	    	    			   stop = true;
 	    	    			   break;
-	    	    		   case READ_DATA_RECEIVED:   /* 数据读取完成,开�?处理value 部分 */
+	    	    		   case READ_DATA_RECEIVED:   /* 数据读取完成,开始 处理value 部分 */
 	    	    			   ioHandler.doReadHandler(this);
 	    	    			   break;
 	    	    		   case READ_ERROR:
@@ -127,7 +127,7 @@ public class Connection implements Closeable, Runnable {
 	    	    		   case READ_NO_DATA_RECEIVED:
 	    	    			   state = CONN_STATES.conn_waiting;
 	    	    			   break;
-	    	    		   case READ_DATA_RECEIVED:   /* 数据读取完成,开始解析命�?*/
+	    	    		   case READ_DATA_RECEIVED:   /* 数据读取完成,开始解析命令 */
 	    	    			   state = CONN_STATES.conn_parse_cmd;
 	    	    			   break;
 	    	    		   case READ_ERROR:
@@ -218,7 +218,7 @@ public class Connection implements Closeable, Runnable {
                 	newReadBuffer.position(readBuffer.position());
                 	readBuffer = newReadBuffer;
                 	newReadBuffer = null;
-                	setLastMessagePos(0);  //扩容�?重置最后一次读取位�?
+                	setLastMessagePos(0);  //扩容后,重置最后一次读取位置
             	}else if (readBuffer.limit() < readBuffer.capacity()
                         && readBuffer.position() == readBuffer.limit()) {
                     readBuffer.limit(readBuffer.capacity());
@@ -271,7 +271,7 @@ public class Connection implements Closeable, Runnable {
     }
 
     /**
-     * 异步�?
+     * 异步写
      *
      * @throws IOException
      */

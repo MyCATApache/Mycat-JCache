@@ -62,11 +62,11 @@ public class AsciiIOHanlder implements IOHandler {
 	private static ByteBuffer FLUSH_FORBIDDEN = ByteBuffer.wrap("CLIENT_ERROR flush_all not allowed.\r\n".getBytes());
 
 	/**
-	 * 鏂囨湰鍗忚澶勭�?
-	 * TODO 缂栫�?瑙ｇ爜閮ㄥ垎鎺ュ彛鍖栵紝鍏敤鍖�? 澶勭�?
+	 * 文本协议处理
+	 * TODO 编码/解码部分接口化，公用�? 处理
 	 * @param conn
 	 * @param buffer
-	 * @return boolean  鏄惁闇�瑕佺户缁鍙栧懡浠�, true 缁х画璇诲彇鍛戒护,涓嶆竻绌哄綋鍓嶇紦鍐插尯,false 璁剧疆lastMessagePos 鎵ц涓嬩竴涓姸鎬�
+	 * @return boolean  是否需要继续读取命�? true 继续读取命令,不清空当前缓冲区,false 设置lastMessagePos 执行下一个状�?
 	 * @throws IOException
 	 */
 	@Override
@@ -136,8 +136,8 @@ public class AsciiIOHanlder implements IOHandler {
 	}
 	
 	/**
-	 * 鍛戒护鐨勮В鏋愬鐞�
-	 * TODO 澧炲�? 閾惧紡澶勭悊璁捐妗嗘灦
+	 * 命令的解析处�?
+	 * TODO 增加  链式处理设计框架
 	 * @param conn
 	 * @param readedLine
 	 */
