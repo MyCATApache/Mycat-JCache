@@ -58,7 +58,7 @@ public class Connection implements Closeable, Runnable {
     private CONN_STATES state;
     private CONN_STATES write_and_go;  /** which state to go into after finishing current write */
     private BIN_SUBSTATES substate;
-    private boolean noreply; /* True if the reply should not be sent. */
+    private boolean noreply = false; /* True if the reply should not be sent. */
     private long item;
     private int rlbytes;/* how many bytes to swallow */  
     

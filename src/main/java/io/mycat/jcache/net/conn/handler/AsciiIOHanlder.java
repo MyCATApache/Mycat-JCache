@@ -62,11 +62,11 @@ public class AsciiIOHanlder implements IOHandler {
 	private static ByteBuffer FLUSH_FORBIDDEN = ByteBuffer.wrap("CLIENT_ERROR flush_all not allowed.\r\n".getBytes());
 
 	/**
-	 * 鏂囨湰鍗忚澶勭悊
-	 * TODO 缂栫爜/瑙ｇ爜閮ㄥ垎鎺ュ彛鍖栵紝鍏敤鍖�  澶勭悊
+	 * 文本协议处理
+	 * TODO 编码/解码部分接口化，公用化  处理
 	 * @param conn
 	 * @param buffer
-	 * @return boolean  鏄惁闇�瑕佺户缁鍙栧懡浠�, true 缁х画璇诲彇鍛戒护,涓嶆竻绌哄綋鍓嶇紦鍐插尯,false 璁剧疆lastMessagePos 鎵ц涓嬩竴涓姸鎬�
+	 * @return boolean  是否需要继续读取命令, true 继续读取命令,不清空当前缓冲区,false 设置lastMessagePos 执行下一个状态
 	 * @throws IOException
 	 */
 	@Override
@@ -136,8 +136,8 @@ public class AsciiIOHanlder implements IOHandler {
 	}
 	
 	/**
-	 * 鍛戒护鐨勮В鏋愬鐞�
-	 * TODO 澧炲姞  閾惧紡澶勭悊璁捐妗嗘灦
+	 * 命令的解析处理
+	 * TODO 增加  链式处理设计框架
 	 * @param conn
 	 * @param readedLine
 	 */
@@ -181,11 +181,24 @@ public class AsciiIOHanlder implements IOHandler {
 		}
 	}
 	
+	private boolean set_noreply_maybe(Connection conn,String[] params){
+	    int noreply_index = params.length - 1;
+
+	    String ReplyStr = new String("noreply");
+	    if (!params[noreply_index].isEmpty() 
+	    		&& (params[noreply_index].equals(ReplyStr))){
+	    	conn.setNoreply(true);
+	    }
+	    
+	    return conn.isNoreply();
+	}
+	
 	private void process_touch_command(Connection conn,String[] params)throws IOException{
 		String key = params[1];
 		int nkey = key.length();
 		long exptime = 0;
 		long it;
+		set_noreply_maybe(conn,params);
 		if(nkey > JcacheGlobalConfig.KEY_MAX_LENGTH){
 			out_string(conn,badformat);
 			return;
@@ -222,6 +235,7 @@ public class AsciiIOHanlder implements IOHandler {
 		String key = params[1];
 		int nkey = key.length();
 		byte[] tmpbuf = new byte[8];
+		set_noreply_maybe(conn,params);
 		if(nkey > JcacheGlobalConfig.KEY_MAX_LENGTH){
 			out_string(conn,badformat);
 			return;
@@ -268,7 +282,7 @@ public class AsciiIOHanlder implements IOHandler {
 	
 	private void process_flush_command(Connection conn,String[] params){
         long new_oldest = 0;
-		
+        set_noreply_maybe(conn,params);
 		if(!Settings.flushEnabled){
 			out_string(conn,FLUSH_FORBIDDEN);
 			return;
@@ -307,6 +321,7 @@ public class AsciiIOHanlder implements IOHandler {
 		long it;
 		key = params[1];
 		nkey = key.length();
+		set_noreply_maybe(conn,params);
 		if(nkey > JcacheGlobalConfig.KEY_MAX_LENGTH){
 			out_string(conn,badformat);
 			return;
@@ -359,7 +374,7 @@ public class AsciiIOHanlder implements IOHandler {
 				.append(new String(ItemUtil.getValue(it))).append("\r\n");
 				addWriteQueue(conn,ByteBuffer.wrap(result.toString().getBytes()));
 				JcacheContext.getItemsAccessManager().item_remove(it);  //refcount --;
-				JcacheContext.getItemsAccessManager().item_update(it);  // 鏇存柊 鏈�杩戣闂椂闂�
+				JcacheContext.getItemsAccessManager().item_update(it);  // 更新 最近访问时间
 			}
 		}
 		
@@ -373,6 +388,7 @@ public class AsciiIOHanlder implements IOHandler {
 		long it;
 		String key = params[1];
 		int nkey = params[1].length();
+		set_noreply_maybe(conn,params);
 		if(nkey > JcacheGlobalConfig.KEY_MAX_LENGTH){
 			out_string(conn,badformat);
 			return;
@@ -430,7 +446,6 @@ public class AsciiIOHanlder implements IOHandler {
 		conn.setWrite_and_go(CONN_STATES.conn_nread);
 	}
 	
-	
 	private void addWriteQueue(Connection conn,ByteBuffer badformat){
 		ByteBuffer formet = badformat.slice();
 		formet.position(formet.limit());
@@ -438,6 +453,12 @@ public class AsciiIOHanlder implements IOHandler {
 	}
 	
 	private void out_string(Connection conn,ByteBuffer badformat){
+		if(conn.isNoreply())
+		{
+			conn.setState(CONN_STATES.conn_new_cmd);
+			conn.setNoreply(false);
+			return;
+		}
 		ByteBuffer formet = badformat.slice();
 		formet.position(formet.limit());
 		conn.addWriteQueue(formet);
