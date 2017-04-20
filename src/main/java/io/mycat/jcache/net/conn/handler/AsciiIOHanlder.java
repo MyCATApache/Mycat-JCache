@@ -63,10 +63,10 @@ public class AsciiIOHanlder implements IOHandler {
 
 	/**
 	 * 文本协议处理
-	 * TODO 编码/解码部分接口化，公用�? 处理
+	 * TODO 编码/解码部分接口化，公用化  处理
 	 * @param conn
 	 * @param buffer
-	 * @return boolean  是否需要继续读取命�? true 继续读取命令,不清空当前缓冲区,false 设置lastMessagePos 执行下一个状�?
+	 * @return boolean  是否需要继续读取命令, true 继续读取命令,不清空当前缓冲区,false 设置lastMessagePos 执行下一个状态
 	 * @throws IOException
 	 */
 	@Override
@@ -136,7 +136,7 @@ public class AsciiIOHanlder implements IOHandler {
 	}
 	
 	/**
-	 * 命令的解析处�?
+	 * 命令的解析处理
 	 * TODO 增加  链式处理设计框架
 	 * @param conn
 	 * @param readedLine
@@ -374,7 +374,7 @@ public class AsciiIOHanlder implements IOHandler {
 				.append(new String(ItemUtil.getValue(it))).append("\r\n");
 				addWriteQueue(conn,ByteBuffer.wrap(result.toString().getBytes()));
 				JcacheContext.getItemsAccessManager().item_remove(it);  //refcount --;
-				JcacheContext.getItemsAccessManager().item_update(it);  // 更新 最近访问时�?
+				JcacheContext.getItemsAccessManager().item_update(it);  // 更新 最近访问时间
 			}
 		}
 		
