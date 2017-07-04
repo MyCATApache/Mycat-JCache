@@ -33,7 +33,7 @@ public final class TCPNIOAcceptor extends Thread {
     private final NIOReactorPool reactorPool;
 
 
-    public TCPNIOAcceptor(String bindIp, int port, NIOReactorPool reactorPool, int backlog,String aModel)
+    public TCPNIOAcceptor(String bindIp, int port, NIOReactorPool reactorPool, int backlog, AcceptModel aModel)
             throws IOException {
         super.setName("nioacceptor");
         this.selector = Selector.open();
@@ -46,9 +46,9 @@ public final class TCPNIOAcceptor extends Thread {
         this.serverChannel.register(selector, SelectionKey.OP_ACCEPT);
         this.reactorPool = reactorPool;
 
-        if(AcceptModel.MEMCACHE.getModel().equals(aModel)){
+        if(AcceptModel.MEMCACHE == aModel){
             Settings.binding_protocol=Protocol.negotiating;
-        }else if(AcceptModel.REDIS.getModel().equals(aModel)){
+        }else if(AcceptModel.REDIS == aModel){
             Settings.binding_protocol=Protocol.resp;
         }
 
