@@ -3,6 +3,7 @@ package io.mycat.jcache.net.conn.handler;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import io.mycat.jcache.context.JcacheContext;
 import io.mycat.jcache.enums.conn.CONN_STATES;
 import io.mycat.jcache.enums.protocol.binary.BinaryProtocol;
 import io.mycat.jcache.enums.protocol.binary.ProtocolResponseStatus;
@@ -18,8 +19,9 @@ import io.mycat.jcache.net.conn.Connection;
 public class BinaryIOHandler implements IOHandler{ 
 
 	@Override
-	public boolean doReadHandler(Connection conn) throws IOException {	
-		
+	public boolean doReadHandler(Connection conn) throws IOException {
+
+
 		BinaryCommand command = null;
 		final ByteBuffer readbuffer = conn.getReadDataBuffer();
 		int offset = conn.getLastMessagePos();
