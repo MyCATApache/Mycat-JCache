@@ -3,6 +3,7 @@ package io.mycat.jcache.net;
 
 
 
+import io.mycat.jcache.enums.protocol.Protocol;
 import io.mycat.jcache.net.conn.ConnectIdGenerator;
 import io.mycat.jcache.net.conn.Connection;
 import io.mycat.jcache.net.conn.handler.IOHandlerFactory;
@@ -32,7 +33,7 @@ public final class TCPNIOAcceptor extends Thread {
     private final NIOReactorPool reactorPool;
 
 
-    public TCPNIOAcceptor(String bindIp, int port, NIOReactorPool reactorPool, int backlog)
+    public TCPNIOAcceptor(String bindIp, int port, NIOReactorPool reactorPool, int backlog,String aModel)
             throws IOException {
         super.setName("nioacceptor");
         this.selector = Selector.open();
@@ -44,6 +45,13 @@ public final class TCPNIOAcceptor extends Thread {
         serverChannel.bind(new InetSocketAddress(bindIp, port), backlog);
         this.serverChannel.register(selector, SelectionKey.OP_ACCEPT);
         this.reactorPool = reactorPool;
+
+        if(AcceptModel.MEMCACHE.getModel().equals(aModel)){
+            Settings.binding_protocol=Protocol.negotiating;
+        }else if(AcceptModel.REDIS.getModel().equals(aModel)){
+            Settings.binding_protocol=Protocol.resp;
+        }
+
     }
 
     @Override
@@ -119,6 +127,21 @@ public final class TCPNIOAcceptor extends Thread {
         try {
             channel.close();
         } catch (IOException e) {
+        }
+    }
+
+    enum AcceptModel{
+        MEMCACHE("memcache"),
+        REDIS("redis"),;
+
+       AcceptModel(String model){
+           this.model = model;
+       }
+
+        private String model;
+
+        public String getModel() {
+            return model;
         }
     }
 

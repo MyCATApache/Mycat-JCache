@@ -8,7 +8,8 @@ package io.mycat.jcache.enums.protocol;
 public enum Protocol {
     binary( 0 ),
     negotiating( 0 ), /* Discovering the protocol */
-    ascii( 3 ); /* arbitrary value. */
+    ascii( 3 ), /* arbitrary value. */
+	resp(4);/* redis protocol */
 	
 	private int value = 0;
 

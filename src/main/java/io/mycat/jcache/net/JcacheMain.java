@@ -161,14 +161,18 @@ public class JcacheMain
     
     private static void startJcacheServer() throws IOException {
     	int port = ConfigLoader.getIntProperty("port",Settings.port);
+		int redis_port = ConfigLoader.getIntProperty("redis_port",Settings.redis_port);
     	int poolsize = ConfigLoader.getIntProperty("reactor.pool.size",JcacheGlobalConfig.defaulePoolSize);
     	String bindIp = ConfigLoader.getStringProperty("reactor.pool.bindIp", JcacheGlobalConfig.defaultPoolBindIp);
     	String reaStrategy = ConfigLoader.getStringProperty("reactor.pool.selectStrategy", JcacheGlobalConfig.defaultReactorSelectStrategy);
     	int backlog = ConfigLoader.getIntProperty("acceptor.max_connect_num", JcacheGlobalConfig.defaultMaxAcceptNum);
     	NIOReactorPool reactorPool = new NIOReactorPool(poolsize,reactorStrategy.get(ReactorSelectEnum.valueOf(reaStrategy)));
     	
-    	TCPNIOAcceptor acceptor=new TCPNIOAcceptor(bindIp,port, reactorPool,backlog);
-		acceptor.start();
+    	TCPNIOAcceptor m_acceptor=new TCPNIOAcceptor(bindIp,port, reactorPool,backlog,"memcache");//memcache 监听
+    	TCPNIOAcceptor r_acceptor=new TCPNIOAcceptor(bindIp,redis_port, reactorPool,backlog,"redis");//redis 监听
+
+		m_acceptor.start();
+		r_acceptor.start();
     }
     
     /*

@@ -28,6 +28,7 @@ public class Settings {
 	public static String access = "0700";
 	public static int port = 11211;
 	public static int udpport = 11211;
+	public static int redis_port=6378;
 	public static String inter = null;
 	
 	public static long maxbytes = VM.maxDirectMemory()>0?VM.maxDirectMemory():64*1024*1024; //64M
