@@ -1,5 +1,6 @@
 package io.mycat.jcache.net;
 
+import io.mycat.jcache.net.TCPNIOAcceptor.AcceptModel;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -168,8 +169,8 @@ public class JcacheMain
     	int backlog = ConfigLoader.getIntProperty("acceptor.max_connect_num", JcacheGlobalConfig.defaultMaxAcceptNum);
     	NIOReactorPool reactorPool = new NIOReactorPool(poolsize,reactorStrategy.get(ReactorSelectEnum.valueOf(reaStrategy)));
     	
-    	TCPNIOAcceptor m_acceptor=new TCPNIOAcceptor(bindIp,port, reactorPool,backlog,"memcache");//memcache 监听
-    	TCPNIOAcceptor r_acceptor=new TCPNIOAcceptor(bindIp,redis_port, reactorPool,backlog,"redis");//redis 监听
+    	TCPNIOAcceptor m_acceptor=new TCPNIOAcceptor(bindIp,port, reactorPool,backlog, AcceptModel.MEMCACHE);//memcache 监听
+    	TCPNIOAcceptor r_acceptor=new TCPNIOAcceptor(bindIp,redis_port, reactorPool,backlog,AcceptModel.REDIS);//redis 监听
 
 		m_acceptor.start();
 		r_acceptor.start();
