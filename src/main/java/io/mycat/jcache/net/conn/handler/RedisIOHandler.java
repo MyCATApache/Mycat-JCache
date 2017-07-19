@@ -161,7 +161,7 @@ public class RedisIOHandler implements IOHandler {
         addOkReplay(redisMessage);
     }
 
-    class RedisMessage {
+    public class RedisMessage {
 
         private final ByteBuffer connReadBuf;
         private int position, limit;
