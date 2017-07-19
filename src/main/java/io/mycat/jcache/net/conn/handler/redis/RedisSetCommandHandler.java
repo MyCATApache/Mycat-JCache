@@ -1,5 +1,6 @@
 package io.mycat.jcache.net.conn.handler.redis;
 
+import io.mycat.jcache.message.RedisMessage;
 import io.mycat.jcache.net.conn.Connection;
 import io.mycat.jcache.net.conn.handler.RedisCommandHandler;
 import io.mycat.jcache.net.conn.handler.RedisIOHandler;
@@ -13,7 +14,7 @@ import io.mycat.jcache.net.conn.handler.RedisIOHandler;
 public class RedisSetCommandHandler extends AbstractRedisComandHandler {
 
     @Override
-    public void handle(Connection conn, RedisIOHandler.RedisMessage message) {
+    public void handle(Connection conn, RedisMessage message) {
 
     }
 }

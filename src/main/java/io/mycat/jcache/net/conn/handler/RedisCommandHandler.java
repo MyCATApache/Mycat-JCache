@@ -1,5 +1,6 @@
 package io.mycat.jcache.net.conn.handler;
 
+import io.mycat.jcache.message.RedisMessage;
 import io.mycat.jcache.net.conn.Connection;
 
 /**
@@ -12,5 +13,5 @@ public interface RedisCommandHandler {
      * @param conn
      * @param message
      */
-    void handle(Connection conn, RedisIOHandler.RedisMessage message);
+    void handle(Connection conn, RedisMessage message);
 }

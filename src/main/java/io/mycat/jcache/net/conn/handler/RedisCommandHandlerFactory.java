@@ -16,7 +16,7 @@ public final class RedisCommandHandlerFactory {
      * @param cmd
      * @return
      */
-    public RedisCommandHandler getHandler(String cmd){
+    public static RedisCommandHandler getHandler(String cmd){
         switch (cmd){
             case "get":
                 return  new RedisGetCommandHandler();

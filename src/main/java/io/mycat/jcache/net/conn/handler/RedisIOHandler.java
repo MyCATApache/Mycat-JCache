@@ -1,5 +1,6 @@
 package io.mycat.jcache.net.conn.handler;
 
+import io.mycat.jcache.message.RedisMessage;
 import io.mycat.jcache.net.conn.Connection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,17 +24,17 @@ public class RedisIOHandler implements IOHandler {
             conn.getLastMessagePos());
 
         while (redisMessage.position() < redisMessage.limit()) {
-            redisMessage.replay = null;
+            redisMessage.replay(null);
             int result = processMultibulkBuffer(redisMessage);
             conn.getReadDataBuffer().position(redisMessage.position());
             conn.setLastMessagePos(redisMessage.position());
 
             if (result == REDIS_OK) {
-                processCommand(redisMessage);
+                processCommand(conn,redisMessage);
             }
 
-            if (redisMessage.replay != null) {
-                ByteBuffer writeBuf = ByteBuffer.wrap(redisMessage.replay.getBytes());
+            if (redisMessage.replay() != null) {
+                ByteBuffer writeBuf = ByteBuffer.wrap(redisMessage.replay().getBytes());
                 writeBuf.compact();
                 conn.addWriteQueue(writeBuf);
                 conn.enableWrite(true);
@@ -49,7 +50,7 @@ public class RedisIOHandler implements IOHandler {
 
         if (message.charAt(0) != '*') {
             discardCurrentCmd(redisMessage, message);
-            addErrReplay(redisMessage,
+            redisMessage.addErrReplay(redisMessage,
                 "Protocol error: expected '*', got '" + message.charAt(0) + "'");
             return REDIS_ERR;
         }
@@ -69,7 +70,7 @@ public class RedisIOHandler implements IOHandler {
         }
 
         if (multibulkLen > 1024 * 1024) {
-            addErrReplay(redisMessage, "Protocol error: invalid multibulk length");
+            redisMessage.addErrReplay(redisMessage, "Protocol error: invalid multibulk length");
             discardCurrentCmd(redisMessage, message);
             return REDIS_ERR;
         }
@@ -87,13 +88,13 @@ public class RedisIOHandler implements IOHandler {
             }
             if (lineEndPos - index > REDIS_INLINE_MAX_SIZE) {
                 discardCurrentCmd(redisMessage, message);
-                addErrReplay(redisMessage, "Protocol error: too big bulk count string");
+                redisMessage.addErrReplay(redisMessage, "Protocol error: too big bulk count string");
                 return REDIS_ERR;
             }
 
             if (message.charAt(index) != '$') {
                 discardCurrentCmd(redisMessage, message);
-                addErrReplay(redisMessage,
+                redisMessage.addErrReplay(redisMessage,
                     "Protocol error: expected '$', got '" + message.charAt(index) + "'");
                 return REDIS_ERR;
             }
@@ -105,13 +106,13 @@ public class RedisIOHandler implements IOHandler {
                 lineEndPos += 2;// 读取/r/n
             } catch (NumberFormatException e) {
                 discardCurrentCmd(redisMessage, message);
-                addErrReplay(redisMessage, "Protocol error: invalid bulk length");
+                redisMessage.addErrReplay(redisMessage, "Protocol error: invalid bulk length");
                 return REDIS_ERR;
             }
 
             if (bulkLen < 0 || bulkLen > 512 * 1024 * 1024) {
                 discardCurrentCmd(redisMessage, message);
-                addErrReplay(redisMessage, "Protocol error: invalid bulk length");
+                redisMessage.addErrReplay(redisMessage, "Protocol error: invalid bulk length");
                 return REDIS_ERR;
             }
 
@@ -148,58 +149,11 @@ public class RedisIOHandler implements IOHandler {
         }
     }
 
-    private void addErrReplay(RedisMessage redisMessage, String replay) {
-        redisMessage.replay("-ERR " + replay + "\r\n");
-    }
-
-    private void addOkReplay(RedisMessage redisMessage) {
-        redisMessage.replay("+OK\r\n");
-    }
-
-    private void processCommand(RedisMessage redisMessage) {
+    private void processCommand(Connection conn,RedisMessage redisMessage) {
         logger.debug(Arrays.toString(redisMessage.cmdParams()));
-        addOkReplay(redisMessage);
+        // 根据命令参数，获取不同的handler
+        RedisCommandHandlerFactory.getHandler(redisMessage.cmdParams()[0]).handle(conn,redisMessage);
     }
 
-    public class RedisMessage {
 
-        private final ByteBuffer connReadBuf;
-        private int position, limit;
-        private String replay;
-        private String[] cmdParams;
-
-        public RedisMessage(ByteBuffer connReadBuf, int position) {
-            this.connReadBuf = connReadBuf;
-            this.position = position;
-            this.limit = this.connReadBuf.position();
-        }
-
-        public String message() {
-            return new String(this.connReadBuf.array(), position, limit - position);
-        }
-
-        public int limit() {
-            return this.limit;
-        }
-
-        public int position() {
-            return this.position;
-        }
-
-        public void position(int position) {
-            this.position = position;
-        }
-
-        public void replay(String replay) {
-            this.replay = replay;
-        }
-
-        public void cmdParams(String[] cmdParams) {
-            this.cmdParams = cmdParams;
-        }
-
-        public String[] cmdParams() {
-            return this.cmdParams;
-        }
-    }
 }

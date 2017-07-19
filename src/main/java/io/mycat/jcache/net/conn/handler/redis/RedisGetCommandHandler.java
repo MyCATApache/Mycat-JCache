@@ -1,6 +1,7 @@
 package io.mycat.jcache.net.conn.handler.redis;
 
 import io.mycat.jcache.memory.redis.RedisStorage;
+import io.mycat.jcache.message.RedisMessage;
 import io.mycat.jcache.net.conn.Connection;
 import io.mycat.jcache.net.conn.handler.RedisCommandHandler;
 import io.mycat.jcache.net.conn.handler.RedisIOHandler;
@@ -20,14 +21,14 @@ public class RedisGetCommandHandler extends AbstractRedisComandHandler {
     private static final Logger logger = LoggerFactory.getLogger(Connection.class);
 
     @Override
-    public void handle(Connection conn, RedisIOHandler.RedisMessage message) {
+    public void handle(Connection conn,RedisMessage message) {
         logger.debug("handle get command....");
         String[] cmdParams = message.cmdParams();
         String params = cmdParams[1];
 
         ConcurrentMap<String, Object> strStorage = RedisStorage.getStringStorage();
         if(!strStorage.containsKey(params)){
-            addNilReply(message);
+            message.addNilReply(message);
         }
     }
 }
